@@ -1,0 +1,125 @@
+#!/bin/bash
+
+echo "This script must be run with sudo for it to work properly"
+
+#### Install slurm ####
+echo "Installing slurm on node "$HOSTNAME
+
+read -p "Is "$HOSTNAME" part of the Marvel cluster? (Y/n): " checkname
+if [ ${checkname} == "Y" ]; then
+	clustername="Marvel"
+else
+	read -p "Enter cluster name: " clustername
+fi
+
+read -p "Is this the control node? (Y/n): " ctlnode
+if [ ${ctlnode} == "Y" ]; then
+	ctlname=$HOSTNAME
+else
+#	ctlname="magneto"
+	read -p "Enter name of control node: " ctlname
+fi
+
+#apt update
+#apt install munge libpam-slurm slurmd slurmdbd slurm-wlm-doc cgroup-tools mariadb-common mariadb-server mysql-common mysql-server
+
+if [ ${ctlnode} == "Y" ]; then
+	echo "Installing slurmctld..."	
+#	apt install slurmctld 
+fi
+
+read -p "How many GPUs on this node? : " numGPUs
+if [ ${numGPUs} != 0 ]; then
+	read -p "GPU type? (options: gtx1080ti): " typeGPU
+fi
+
+#### Creating log files ####
+## Control node
+#if [ ${ctlnode} == "Y" ]; then
+#	logDir=/var/log/slurm-llnl/
+#	spoolDir=/var/spool/slurmctld
+#
+#	mkdir $logDir $spoolDir
+#	chown slurm: $logDir $spoolDir
+#	chmod 755 $logDir $spoolDir
+#
+#	logFile=$logDir/slurmctld.log
+#	if [ ! -e $logFile ]; then
+#		touch $logFile
+#	fi
+#	chown slurm: $logFile
+#
+#	logFile=$logDir/slurm_jobacc.log
+#	touch $logFile
+#	chown slurm: $logFile
+#
+#	logFile=$logDir/slurm_jobcomp.log
+#	touch $logFile
+#	chown slurm: $logFile
+#fi
+#
+## Compute nodes
+#logDir=/var/log/
+#spoolDir=/var/spool/slurmd
+#
+#mkdir $spoolDir
+#chown slurm: $spoolDir
+#chmod 755 $spoolDir
+#
+#logFile=$logDir/slurmd.log
+#touch $logFile
+#chown slurm: $logFile
+
+#### Set up config files ####
+## Download
+#cd /home/$HOSTNAME/Downloads
+##cd /home/coyleej/Downloads
+#
+#wget https://github.com/SchedMD/slurm/archive/slurm-17-11-2-1.tar.gz 
+#tar -xzvf slurm-17-11-2-1.tar.gz
+#
+#cp "./slurm-slurm-17-11-2-1/etc/"*".conf.example" "/etc/slurm-llnl/"
+#
+#cd "/etc/slurm-llnl"
+#
+## Setup gres.conf
+#if [ ${numGPUs} != 0 ]; then
+#	echo "Name=gpu Type="${typeGPU}" File=/dev/nvidia0" > gres.conf
+#
+#	ii=1
+#	while [ $ii -lt ${numGPUs} ]
+#	do
+#		echo "Name=gpu Type="${typeGPU}" File=/dev/nvidia"${ii} >> gres.conf
+#		ii=$(( $ii + 1 ))
+#	done
+#fi
+
+## Setup cgroup.conf
+#cat "cgroup.conf.example" | sed "s/ConstrainRAMSpace=no/ConstrainRAMSpace=yes/" > cgroup.conf
+#
+## Edit grub settings for cgroup
+#grubFile="/etc/default/grub"
+#cp ${grubFile} ${grubFile}".backup"
+#
+#grep "^GRUB_CMDLINE_LINUX=" /etc/default/grub | grep "cgroup_enable=memory"
+#if [ $? != 0 ]; then
+#	sed '/GRUB_CMDLINE_LINUX=/ s/\"/ cgroup_enable=memory\"/2' <${grubFile} >${grubFile}
+#fi
+#
+#grep "^GRUB_CMDLINE_LINUX=" /etc/default/grub | grep "swapaccount=1"
+#if [ $? != 0 ]; then
+#	sed '/GRUB_CMDLINE_LINUX=/ s/\"/ swapaccount=1\"/2' <${grubFile} >${grubFile}
+#fi
+
+##### Code works up to here (Commented out to make testing faster!) #####
+
+##### Testing the following: #####
+cd "/home/coyleej/TEMP"
+
+sed -e "/ClusterName=/ s/linux/${clustername}/" \
+	-e "/ControlMachine=/ s/linux0/${ctlname}/" \
+	-e "/SlurmctldPidFile=/ s/run/run\/slurm-llnl/" \
+	-e "/SlurmdPidFile=/ s/run/run\/slurm-llnl/" \
+	-e "/ProctrackType=/ s/pgid/cgroup/" \
+	<slurm.conf.example >slurm.conf
+
