@@ -24,7 +24,7 @@ apt update
 apt install munge libpam-slurm slurmd slurmdbd slurm-wlm-doc cgroup-tools mariadb-common mariadb-server mysql-common mysql-server
 
 if [ ${ctlnode} == "Y" ]; then
-	apt install slurmctld 
+	apt install slurmctld slurm-wlm
 fi
 
 read -p "How many GPUs on this node? : " numGPUs
@@ -119,7 +119,8 @@ if [ $? != 0 ]; then
 fi
 
 # Setup slurm.conf
-node_info=$(slurmd -C | grep NodeName)
+#node_info=$(slurmd -C | grep NodeName)
+node_info=$(slurmd -C | grep NodeName || echo "NodeName="$HOSTNAME" CPUs=12 Boards=1 SocketsPerBoard=1 CoresPerSocket=6 ThreadsPerCore=2 State=UNKNOWN")
 
 sed -e "/ClusterName=/ s/linux/${clustername}/" \
 	-e "/ControlMachine=/ s/linux0/${ctlname}/" \
@@ -143,6 +144,9 @@ GresTypes=gpu\\
 	-e "/^PartitionName=/ s/ALL Default/ALL OverSubscribe=NO Default/" \
 	<slurm.conf.example >slurm.conf
 
-echo "Initial slurm setup on $HOSTNAME finished."
+echo "Initial slurm setup on $HOSTNAME finished.\nAttempting to start slurm..."
+systemctl start slurmd
+systemctl start slurmctld
+echo "If either of these fail, use slurmd -Dvvvv or slurmctld -Dvvvv"
 echo "Any inter-machine communication must be set up manually!"
 echo "This script does not perform any database setup."
