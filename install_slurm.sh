@@ -146,7 +146,9 @@ GresTypes=gpu\\
 
 echo "Initial slurm setup on $HOSTNAME finished.\nAttempting to start slurm..."
 systemctl start slurmd
-systemctl start slurmctld
+if [ ${ctlnode} == "Y" ]; then
+	systemctl start slurmctld
+fi
 echo "If either of these fail, use slurmd -Dvvvv or slurmctld -Dvvvv"
 echo "Any inter-machine communication must be set up manually!"
 echo "This script does not perform any database setup."
