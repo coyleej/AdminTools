@@ -67,7 +67,7 @@ if [ ${ctlnode} == "Y" ]; then
 fi
 
 # Compute nodes
-logDir=/var/log/
+logDir=/var/log
 spoolDir=/var/spool/slurmd
 
 mkdir $spoolDir
@@ -145,10 +145,16 @@ GresTypes=gpu\\
 	<slurm.conf.example >slurm.conf
 
 echo "Initial slurm setup on $HOSTNAME finished.\nAttempting to start slurm..."
+
+pidDir=/var/run/slurm-llnl
+chown slurm: $pidDir/slurmd.pid
 systemctl start slurmd
 if [ ${ctlnode} == "Y" ]; then
+	chown slurm: $pidDir/slurmcltd.pid
 	systemctl start slurmctld
 fi
+
 echo "If either of these fail, use slurmd -Dvvvv or slurmctld -Dvvvv"
+echo "Slurm daemons are not enabled yet. Test slurm first."
 echo "Any inter-machine communication must be set up manually!"
 echo "This script does not perform any database setup."
