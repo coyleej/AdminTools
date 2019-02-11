@@ -78,6 +78,11 @@ logFile=$logDir/slurmd.log
 touch $logFile
 chown slurm: $logFile
 
+spoolDir=/var/spool/slurm
+mkdir -p $spoolDir/d
+mkdir $spoolDir/ctld
+chown slurm: $spoolDir $spoolDir/d $spoolDir/ctld
+
 #### Config files ####
 # Download files
 cd /home/$HOSTNAME/Downloads
@@ -153,6 +158,8 @@ if [ ${ctlnode} == "Y" ]; then
 	chown slurm: $pidDir/slurmcltd.pid
 	systemctl start slurmctld
 fi
+
+rm -rf "/home/"$HOSTNAME"/Downloads/slurm-slurm-17-11-2-1/"
 
 echo "If either of these fail, use slurmd -Dvvvv or slurmctld -Dvvvv"
 echo "Slurm daemons are not enabled yet. Test slurm first."
