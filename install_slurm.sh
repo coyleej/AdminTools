@@ -16,7 +16,6 @@ read -p "Is this the control node? (Y/n): " ctlnode
 if [ ${ctlnode} == "Y" ]; then
 	ctlname=$HOSTNAME
 else
-#	ctlname="magneto"
 	read -p "Enter name of control node: " ctlname
 fi
 
@@ -85,7 +84,7 @@ chown slurm: $spoolDir $spoolDir/d $spoolDir/ctld
 
 #### Config files ####
 # Download files
-cd /home/$HOSTNAME/Downloads
+cd /home/$USER/Downloads
 
 wget https://github.com/SchedMD/slurm/archive/slurm-17-11-2-1.tar.gz 
 tar -xzvf slurm-17-11-2-1.tar.gz
@@ -159,7 +158,7 @@ if [ ${ctlnode} == "Y" ]; then
 	systemctl start slurmctld
 fi
 
-rm -rf "/home/"$HOSTNAME"/Downloads/slurm-slurm-17-11-2-1/"
+rm -rf "/home/"$USER"/Downloads/slurm-slurm-17-11-2-1/"
 
 echo "If either of these fail, use slurmd -Dvvvv or slurmctld -Dvvvv"
 echo "Slurm daemons are not enabled yet. Test slurm first."
