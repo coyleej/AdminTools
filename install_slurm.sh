@@ -20,7 +20,7 @@ else
 fi
 
 apt update
-apt install munge libpam-slurm slurmd slurmdbd slurm-wlm-doc cgroup-tools mariadb-common mariadb-server mysql-common mysql-server
+apt install munge libmunge-dev libpam-slurm slurmd slurmdbd slurm-wlm-doc cgroup-tools mariadb-common mariadb-server #mysql-common mysql-server
 
 if [ ${ctlnode} == "Y" ]; then
 	apt install slurmctld slurm-wlm
