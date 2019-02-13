@@ -56,7 +56,7 @@ if [ ${ctlnode} == "Y" ]; then
 	fi
 	chown slurm: $logFile
 
-	logFile=$logDir/slurm_jobacc.log
+	logFile=$logDir/slurm_jobacct.log
 	touch $logFile
 	chown slurm: $logFile
 
