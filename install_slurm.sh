@@ -8,21 +8,19 @@ echo "Installing slurm on node "$HOSTNAME
 read -p "Is "$HOSTNAME" part of the Marvel cluster? (Y/n): " checkname
 if [ ${checkname} == "Y" ]; then
 	clustername="Marvel"
+	ctlname=$HOSTNAME
+	ctlhost="10.0.10.43"
 else
 	read -p "Enter cluster name: " clustername
-fi
-
-read -p "Is this the control node? (Y/n): " ctlnode
-if [ ${ctlnode} == "Y" ]; then
-	ctlname=$HOSTNAME
-else
 	read -p "Enter name of control node: " ctlname
+	read -p "Enter IP of control node: " ctlhost
 fi
 
 apt update
 apt install munge libmunge-dev libpam-slurm slurmd slurmdbd slurm-wlm-doc cgroup-tools mariadb-common mariadb-server #mysql-common mysql-server
 
-if [ ${ctlnode} == "Y" ]; then
+if [ ${ctlname} == $HOSTNAME ]; then
+	ctlnode="Y"
 	apt install slurmctld slurm-wlm
 fi
 
@@ -128,6 +126,8 @@ node_info=$(slurmd -C | grep NodeName || echo "NodeName="$HOSTNAME" CPUs=12 Boar
 
 sed -e "/ClusterName=/ s/linux/${clustername}/" \
 	-e "/ControlMachine=/ s/linux0/${ctlname}/" \
+	-e "/#ControlAddr=/ s/#//" \
+	-e "/ControlAddr=/ s/=/=${ctlhost}/" \
 	-e "/SlurmctldPidFile=/ s/run/run\/slurm-llnl/" \
 	-e "/SlurmdPidFile=/ s/run/run\/slurm-llnl/" \
 	-e "/ProctrackType=/ s/pgid/cgroup/" \

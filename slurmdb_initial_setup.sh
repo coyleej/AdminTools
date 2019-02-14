@@ -26,25 +26,32 @@ sed -e "/#JobAcctGatherType=/ s/#//" \
 	-e "/#JobAcctGatherFrequency=/ s/#//" \
 	-e "/#AccountingStorageType=/ s/#//" \
         -e "/#AccountingStorageHost=/ s/#//" \
-        -e "/AccountingStorageHost=/ s/=/=localhost/" \
-        -e "/#AccountingStorageLoc=/ s/#//" \
-        -e "/AccountingStorageLoc=/ s/=/=slurm_acct_db/" \
-        -e "/#AccountingStoragePass=/ s/#//" \
-        -e "/AccountingStoragePass=/ s/=/=some_pass/" \
+        -e "/AccountingStorageHost=/ s/=/=10.0.10.43/" \
         -e "/#AccountingStorageUser=/ s/#//" \
         -e "/AccountingStorageUser=/ s/=/=slurm/" \
         -e "/AccountingStorageUser=/ a\AccountingStoreJobComment=YES\\
 AccountingStorageEnforce=associations\\
 AccountingStorageTRES=gres/gpu,gres/gpu:gtx1080ti" \
 	<slurm.conf.backup >slurm.conf
+# DO NOT CHANGE THE FOLLOWING! THEY MESS UP SLURM!!
+#        -e "/#AccountingStorageLoc=/ s/#//" \
+#        -e "/AccountingStorageLoc=/ s/=/=slurm_acct_db/" \
+#        -e "/#AccountingStoragePass=/ s/#//" \
+#        -e "/AccountingStoragePass=/ s/=/=some_pass/" \
 
 # Adjusting AccountingStorageEnforce requires slurmctld restart
 echo ""
 echo "Restarting slurmctld daemon..."
 systemctl restart slurmctld
 
+clustername=$( scontrol show config | grep ClusterName | awk '{print $3}' )
+clusterhost=$( scontrol show config | grep ControlAddr | awk '{print $3}' )
+
 # Setup slurmdbd.conf
-sed -e "/LogFile=/ s/\/slurm//" \
+sed -e "/DbdAddr=/ s/localhost/10.0.10.43/" \
+	-e "/DbdHost=/ s/localhost/${clustername}/" \
+        -e "/DbdHost=/ a\#DbdBackupHost=${clusterhost}" \
+	-e "/LogFile=/ s/\/slurm//" \
 	-e "/PidFile=/ s/run/run\/slurm-llnl/" \
 	-e "/#StorageHost=/ s/#//" \
 	-e "/StoragePass=/ s/password/some_pass/" \
