@@ -12,7 +12,7 @@ chown slurm: $logFile
 pidDir=/var/run/slurm-llnl
 pidFile=$pidDir/slurmdbd.pid
 touch $pidFile
-chown slurm $pidDir/slurmdbd.pid
+chown slurm: $pidDir/slurmdbd.pid
 
 # Does slurmdbd not need a spool directory?
 
@@ -29,6 +29,8 @@ sed -e "/#JobAcctGatherType=/ s/#//" \
         -e "/AccountingStorageHost=/ s/=/=localhost/" \
         -e "/#AccountingStorageLoc=/ s/#//" \
         -e "/AccountingStorageLoc=/ s/=/=slurm_acct_db/" \
+        -e "/#AccountingStoragePass=/ s/#//" \
+        -e "/AccountingStoragePass=/ s/=/=some_pass/" \
         -e "/#AccountingStorageUser=/ s/#//" \
         -e "/AccountingStorageUser=/ s/=/=slurm/" \
         -e "/AccountingStorageUser=/ a\AccountingStoreJobComment=YES\\
@@ -45,7 +47,7 @@ systemctl restart slurmctld
 sed -e "/LogFile=/ s/\/slurm//" \
 	-e "/PidFile=/ s/run/run\/slurm-llnl/" \
 	-e "/#StorageHost=/ s/#//" \
-	-e "/#StoragePass=/ s/password/some_pass/" \
+	-e "/StoragePass=/ s/password/some_pass/" \
 	-e "/#StorageLoc=/ s/#//" \
 	<slurmdbd.conf.example >slurmdbd.conf
 

@@ -7,3 +7,6 @@ Slurm-related:
 
 * slurmdb_initial_setup.sh : Sets up slurm database, minus the MariaDB parts
 
+Aliases:
+
+* bash_aliases : a copy of .bash_aliases
