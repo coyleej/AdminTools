@@ -22,38 +22,32 @@ chown slurm: $pidDir/slurmdbd.pid
 cd /etc/slurm-llnl/
 cp slurm.conf slurm.conf.backup
 
+ctlname=$( scontrol show config | grep ControlNode | awk '{print $3}' )
+ctladdr=$( scontrol show config | grep ControlAddr | awk '{print $3}' )
+
 sed -e "/#JobAcctGatherType=/ s/#//" \
 	-e "/#JobAcctGatherFrequency=/ s/#//" \
 	-e "/#AccountingStorageType=/ s/#//" \
         -e "/#AccountingStorageHost=/ s/#//" \
-        -e "/AccountingStorageHost=/ s/=/=10.0.10.43/" \
+        -e "/AccountingStorageHost=/ s/=/=${ctladdr}/" \
         -e "/#AccountingStorageUser=/ s/#//" \
         -e "/AccountingStorageUser=/ s/=/=slurm/" \
         -e "/AccountingStorageUser=/ a\AccountingStoreJobComment=YES\\
 AccountingStorageEnforce=associations\\
 AccountingStorageTRES=gres/gpu,gres/gpu:gtx1080ti" \
 	<slurm.conf.backup >slurm.conf
-# DO NOT CHANGE THE FOLLOWING! THEY MESS UP SLURM!!
-#        -e "/#AccountingStorageLoc=/ s/#//" \
-#        -e "/AccountingStorageLoc=/ s/=/=slurm_acct_db/" \
-#        -e "/#AccountingStoragePass=/ s/#//" \
-#        -e "/AccountingStoragePass=/ s/=/=some_pass/" \
 
 # Adjusting AccountingStorageEnforce requires slurmctld restart
 echo ""
 echo "Restarting slurmctld daemon..."
 systemctl restart slurmctld
 
-clustername=$( scontrol show config | grep ClusterName | awk '{print $3}' )
-clusterhost=$( scontrol show config | grep ControlAddr | awk '{print $3}' )
-
 # Setup slurmdbd.conf
-sed -e "/DbdAddr=/ s/localhost/10.0.10.43/" \
-	-e "/DbdHost=/ s/localhost/${clustername}/" \
-        -e "/DbdHost=/ a\#DbdBackupHost=${clusterhost}" \
+sed -e "/DbdAddr=/ s/localhost/${ctladdr}/" \
+	-e "/DbdHost=/ s/localhost/${ctlname}/" \
+        -e "/DbdHost=/ a\#DbdBackupHost=" \
 	-e "/LogFile=/ s/\/slurm//" \
 	-e "/PidFile=/ s/run/run\/slurm-llnl/" \
-	-e "/#StorageHost=/ s/#//" \
 	-e "/StoragePass=/ s/password/some_pass/" \
 	-e "/#StorageLoc=/ s/#//" \
 	<slurmdbd.conf.example >slurmdbd.conf
@@ -68,11 +62,14 @@ echo "PurgeUsageAfter=12months" >> slurmdbd.conf
 
 scontrol reconfigure
 
-echo "Initial slurm database setup finished. Attempting to start MariaDB..."
+echo "Initial slurm database setup finished. Attempting to start SlurmDBD..."
+systemctl start slurmdbd || (echo "WARNING: That wasn't supposed to happen!"; echo "")
 
 # Start database setup
 echo ""
-systemctl start mariadb || (echo "WARNING: MariaDB had issues starting: troubleshoot and/or reboot the node!"; echo "")
+echo "Attempting to start MariaDB..."
+systemctl start mariadb || echo "WARNING: MariaDB had issues starting: troubleshoot and/or reboot the node!"
 
+echo ""
 echo "Configure the database manually before attempting to start slurmdbd."
 echo "Refer to the SysAdmin Guide for manual database configuration"
