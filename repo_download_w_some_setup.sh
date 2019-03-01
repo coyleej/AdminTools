@@ -66,5 +66,6 @@ echo "Please doublecheck that /etc/environment is correct:"
 cat $envfile
 echo ""
 
-echo "As of right now, Pybind11, OpenBLAS, and S4 must be installed manually."
+echo "NOTE: Pybind11, OpenBLAS, and S4 have beeen downloaded but not installed"
+echo "They must be installed manually."
 echo "MANTIS is useless without these three packages!"
