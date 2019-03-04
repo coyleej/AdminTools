@@ -30,6 +30,8 @@ if [ ! $? = 0 ]; then
 	echo "Please configure (add computers) manually!"
 fi
 
+# Backup /etc/passwd
+sudo cp $etcpass $etcpass.backup
 ii=0
 while [ $ii -lt ${#usernames[*]} ]
 do
@@ -51,7 +53,7 @@ do
 		sudo mkdir /home/${usernames[ii]}
 		sudo chown ${usernames[ii]}: /home/${usernames[ii]}
 
-		echo "${usernames[ii]}:x:${userids[ii]}:${userids[ii]}:${fullnames[ii]},,,:/home/${usernames[ii]}:/bin/bash"
+		echo "${usernames[ii]}:x:${userids[ii]}:${userids[ii]}:${fullnames[ii]},,,:/home/${usernames[ii]}:/bin/bash" | sudo tee -a $etcpass
 
 		if [ -d /home/${usernames[ii]} ]; then
 			cp /etc/skel/* "/home/${usernames[ii]}/"
@@ -66,3 +68,6 @@ do
 
 	ii=$(( $ii+1 ))
 done
+
+echo ""
+echo "Confirm that the user setup was successful, then delete /etc/passwd.backup"
