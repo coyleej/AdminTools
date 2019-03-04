@@ -9,4 +9,8 @@ Slurm-related:
 
 Aliases:
 
-* bash_aliases : a copy of .bash_aliases
+* auto_user_setup.sh : Automated user setup
+
+* repo_download_w_some_setup.sh : Downloads all of our git repos and automatically installs the ones that don't require compiling
+
+* s4py.yml : conda environment setup required by repo_download*

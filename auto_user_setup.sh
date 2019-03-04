@@ -2,45 +2,40 @@
 
 etcpass=/etc/passwd
 
-fullname=coyleej
-userid=1008
-#uid=gid
-
-grep $userid $etcpass
-if [ $? = 0 ]; then 
-	echo "this uid already exists"; 
-else 
-	echo "unclaimed"; 
-fi
-
-echo ""
-fullnames=("Strange" "Eric Harper" "Jonathan Thompson" "Meghan Weber" "Ighodalo Idehenre" "Heidi Nelson-Quillin" "Eleanor Coyle" "Matt Mills")
-usernames=(strange harperes thompsonjr webermn idehenreiu nelsonquillinhd coyleej millsms)
-userids=(1000 1001 1002 1003 1004 1005 1006 1007)
+fullnames=("Strange" "Captain America" "Iron Man" "E C")
+usernames=(strange cap ironman coyleej)
+userids=(1000 1001 1002 1006)
 
 ii=0
 while [ $ii -lt ${#usernames[*]} ]
 do
 	grep ${usernames[ii]} $etcpass
 	if [ $? = 0 ]; then
-		echo "The uid ${userids[ii]} is already taken!"
-		#echo "Please claim one that is not listed below:"
-		#grep ${userids[ii]} $etcpass #| cut -d "d" -f 3
-		#read -p "Enter a new user id:" ${userids[ii]}
+		echo "User ${usernames[ii]} already exists!"
+	else
+		# Leaving it up to the user to pick a non-existing uid
+		grep ${userids[ii]} $etcpass
+		if [ $? = 0 ]; then
+			echo "The uid ${userids[ii]} is already taken!"
+			echo "Please claim one in the 1000s that is not listed below:"
+			grep 100 $etcpass | cut -d ":" -f 3
+			echo $userids
+			read -p "Enter a new user id:" userids[ii]
+			echo "New user id: " ${userids[ii]}
+		fi
+
+		sudo mkdir /home/${usernames[ii]}
+		sudo chown ${usernames[ii]}: /home/${usernames[ii]}
+
+		echo "hi"
+		echo "${usernames[ii]}:x:${userids[ii]}:${userids[ii]}:${fullnames[ii]},,,:/home/${usernames[ii]}:/bin/bash"
+
+		if [ -d /home/${usernames[ii]} ]; then
+			cp /etc/skel/* "/home/${usernames[ii]}/"
+		fi
+
+		sudo passwd ${usernames[ii]}
 	fi
-
-#	## working code
-#	mkdir sudo /home/${usernames[ii]}
-
-	echo "${usernames[ii]}:x:${userids[ii]}:${userids[ii]}:${fullnames[ii]},,,:/home/${usernames[ii]}:/bin/bash"
-	cat /etc/passwd | grep ${usernames[ii]}
-
-#	## working code
-#	if [ -d /home/${usernames[ii]} ]; then
-#		cp /etc/skel/* "/home/${usernames[ii]}/"
-#	fi
-
-	sudo passwd -x60 ${usernames[ii]}
 
 	ii=$(( $ii+1 ))
 done
