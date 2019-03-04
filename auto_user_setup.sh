@@ -1,10 +1,34 @@
 #!/bin/bash
 
 etcpass=/etc/passwd
+adminsync=/home/$USER/Sync
 
-fullnames=("Strange" "Captain America" "Iron Man" "E C")
+fullnames=("Doctor Strange" "Captain America" "Iron Man" "E C")
 usernames=(strange cap ironman coyleej)
 userids=(1000 1001 1002 1006)
+
+# Make sure that group "users" exists
+grep "^users" /etc/group
+if [ ! $? = 0 ]; then
+	sudo groupadd users
+fi
+
+# Make sure that $USER is a member of "users"
+grep $USER /etc/group | grep "^users"
+if [ ! $? = 0 ]; then
+	sudo usermod -a -G users $USER
+fi
+
+# Install syncthing if it's not already present
+dpkg -l | grep syncthing
+if [ ! $? = 0 ]; then 
+	sudo apt install syncthing
+	sudo chown $USER:users $adminsync
+	sudo chmod 3770 /home/$USER/Sync
+	echo ""
+	echo "WARNING: Syncthing installed, but not configured!"
+	echo "Please configure (add computers) manually!"
+fi
 
 ii=0
 while [ $ii -lt ${#usernames[*]} ]
@@ -27,13 +51,16 @@ do
 		sudo mkdir /home/${usernames[ii]}
 		sudo chown ${usernames[ii]}: /home/${usernames[ii]}
 
-		echo "hi"
 		echo "${usernames[ii]}:x:${userids[ii]}:${userids[ii]}:${fullnames[ii]},,,:/home/${usernames[ii]}:/bin/bash"
 
 		if [ -d /home/${usernames[ii]} ]; then
 			cp /etc/skel/* "/home/${usernames[ii]}/"
 		fi
 
+		sudo ln -s $adminsync /home/${usernames[ii]}/Syncthing
+		sudo chmod 3770 $adminsync
+
+		sudo usermod -a -G users ${usernames[ii]}
 		sudo passwd ${usernames[ii]}
 	fi
 
