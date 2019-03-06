@@ -26,12 +26,14 @@ fi
 
 read -p "How many GPUs on this node? : " numGPUs
 if [ ${numGPUs} != 0 ]; then
-	read -p "GPU type? (1: gtx1080ti, 2: gtx2080ti): " typeGPU
+	read -p "GPU type? (1: gtx1080ti, 2: gtx2080ti, 3:gp107gl, 4:none): " typeGPU
 
 	if [ ${typeGPU} == 1 ]; then
 		typeGPU="gtx1080ti"
 	elif [ ${typeGPU} == 2 ]; then
 		typeGPU="gtx2080ti"
+	elif [ ${typeGPU} == 3 ]; then
+		typeGPU="gp107gl"
 	else
 		typeGPU=""
 	fi
@@ -41,7 +43,8 @@ fi
 #### Creating log files ####
 # Control node
 if [ ${ctlnode} == "Y" ]; then
-	logDir=/var/log/slurm-llnl/
+	logDir=/var/log
+	pidDir=/var/log/slurm-llnl
 	spoolDir=/var/spool/slurmctld
 
 	mkdir $logDir $spoolDir
@@ -61,21 +64,29 @@ if [ ${ctlnode} == "Y" ]; then
 	logFile=$logDir/slurm_jobcomp.log
 	touch $logFile
 	chown slurm: $logFile
+
+	pidFile=$pidDir/slurmctld.pid
+	touch $pidFile
+	chown slurm: $pidFile
 fi
 
 # Compute nodes
 logDir=/var/log
-spoolDir=/var/spool/slurmd
+pidDir=/var/log/slurm-llnl
+spoolDir=/var/spool/slurm
 
-mkdir $spoolDir
-chown slurm: $spoolDir
-chmod 755 $spoolDir
+#mkdir $spoolDir
+#chown slurm: $spoolDir
+#chmod 755 $spoolDir
 
 logFile=$logDir/slurmd.log
 touch $logFile
 chown slurm: $logFile
 
-spoolDir=/var/spool/slurm
+pidFile=$pidDir/slurmd.pid
+touch $pidFile
+chown slurm: $pidFile
+
 mkdir -p $spoolDir/d
 mkdir $spoolDir/ctld
 chown slurm: $spoolDir $spoolDir/d $spoolDir/ctld
