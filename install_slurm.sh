@@ -147,6 +147,7 @@ sed -e "/ClusterName=/ s/linux/${clustername}/" \
 	-e "/Prop.*R.*L.*Except=/ s/=/=MEMLOCK/" \
 	-e "/#TaskPlugin=/ s/#//" \
 	-e "/TaskPlugin=/ s/=/=task\/cgroup/" \
+	-e "/InactiveLimit=/ s/=0/=600/" \
 	-e "/SchedulerType=/ a\DefMemPerNode=1000" \
 	-e "/#SelectType=/ s/#//" \
 	-e "/SelectType=/ s/linear/cons_res/" \
