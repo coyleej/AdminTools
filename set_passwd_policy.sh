@@ -3,13 +3,11 @@
 logindefs=/etc/login.defs
 pwquality=/etc/security/pwquality.conf
 
-cp $logindefs $logindefs.backup
-
-sed -e "/^PASS_MAX_DAYS/ s/[0-9]{1,}/60/" \
+sudo sed -i.bak -e "/^PASS_MAX_DAYS/ s/[0-9]{1,}/60/" \
 	-e "/^PASS_WARN_AGE/ s/[0-9]{1,}/7/" \
-	<$logindefs.backup >$logindefs
+	$logindefs
 
-sed -e "/^# difok = 8/minlen = 2/" \
+sudo sed -i.bak -e "/^# difok = 8/minlen = 2/" \
 	-e "/^# minlen = 8/minlen = 15/" \
 	-e "/^# dcredit = 0/dcredit = -2/" \ 
 	-e "/^# ucredit = 0/ucredit = -2/" \ 
@@ -18,7 +16,7 @@ sed -e "/^# difok = 8/minlen = 2/" \
 	-e "/^# minclass = 0/minclass = 4/" \ 
 	-e "/^# maxrepeat = 0/maxrepeat = 2/" \ 
 	-e "/^# usercheck/usercheck/ " \ 
-	<$pwquality >$pwquality
+	$pwquality
 
 echo "Please set your new password. It must meet the following criteria:"
 echo "* At least 15 characters long"
@@ -31,3 +29,12 @@ echo "* Contain at least 2 characters not in the previous password"
 echo "* Not contain your username"
 
 passwd
+
+if [ $? = 0 ]; then
+	echo "Successfully set new password"
+	echo "Deleting $logindefs.bak and $pwquality.bak"
+	sudo rm $logindefs.bak $pwquality.bak
+else
+	echo "Something went wrong. Please fix the issue, then manually delete"
+	echo "the backup files $logindefs.bak and $pwquality.bak"
+fi
