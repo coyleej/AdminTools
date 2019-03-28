@@ -12,24 +12,28 @@ chown slurm: $logFile
 pidDir=/var/run/slurm-llnl
 pidFile=$pidDir/slurmdbd.pid
 touch $pidFile
-chown slurm: $pidDir/slurmdbd.pid
+chown slurm: $pidFile
 
 # Does slurmdbd not need a spool directory?
 
 #### Config files ####
 
-# Setup slurm.conf
-cd /etc/slurm-llnl/
-cp slurm.conf slurm.conf.backup
-
 ctlname=$( scontrol show config | grep ControlNode | awk '{print $3}' )
 ctladdr=$( scontrol show config | grep ControlAddr | awk '{print $3}' )
+
+# Edit slurm.conf
+cd /etc/slurm-llnl/
+cp slurm.conf slurm.conf.backup
 
 sed -e "/#JobAcctGatherType=/ s/#//" \
 	-e "/#JobAcctGatherFrequency=/ s/#//" \
 	-e "/#AccountingStorageType=/ s/#//" \
         -e "/#AccountingStorageHost=/ s/#//" \
         -e "/AccountingStorageHost=/ s/=/=${ctladdr}/" \
+        -e "/#AccountingStorageLoc=/ s/#//" \
+        -e "/AccountingStorageLoc=/ s/=/=\/var\/lib\/mysql/" \
+        -e "/#AccountingStoragePass=/ s/#//" \
+        -e "/AccountingStoragePass=/ s/=/=some_pass/" \
         -e "/#AccountingStorageUser=/ s/#//" \
         -e "/AccountingStorageUser=/ s/=/=slurm/" \
         -e "/AccountingStorageUser=/ a\AccountingStoreJobComment=YES\\
@@ -48,6 +52,10 @@ sed -e "/DbdAddr=/ s/localhost/${ctladdr}/" \
         -e "/DbdHost=/ a\#DbdBackupHost=" \
 	-e "/LogFile=/ s/\/slurm//" \
 	-e "/PidFile=/ s/run/run\/slurm-llnl/" \
+	-e "/#StorageHost=/ s/#//" \
+	-e "/StorageHost=/ s/=/=magneto/" \
+	-e "/#Storageport=/ s/#//" \
+	-e "/Storageport=/ s/1234/3306/" \
 	-e "/StoragePass=/ s/password/some_pass/" \
 	-e "/#StorageLoc=/ s/#//" \
 	<slurmdbd.conf.example >slurmdbd.conf
@@ -62,8 +70,13 @@ echo "PurgeUsageAfter=12months" >> slurmdbd.conf
 
 scontrol reconfigure
 
-echo "Initial slurm database setup finished. Attempting to start SlurmDBD..."
-systemctl start slurmdbd || (echo "WARNING: That wasn't supposed to happen!"; echo "")
+# Edit mariadb config file
+mdbconf=/etc/mysql/my.cnf
+
+echo "" >> ${mdbconf}
+echo "[mysqld]" >> ${mdbconf}
+echo "skip-networking=0" >> ${mdbconf}
+echo "skip-bind-address" >> ${mdbconf}
 
 # Start database setup
 echo ""
