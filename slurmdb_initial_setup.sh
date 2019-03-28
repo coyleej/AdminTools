@@ -53,7 +53,7 @@ sed -e "/DbdAddr=/ s/localhost/${ctladdr}/" \
 	-e "/LogFile=/ s/\/slurm//" \
 	-e "/PidFile=/ s/run/run\/slurm-llnl/" \
 	-e "/#StorageHost=/ s/#//" \
-	-e "/StorageHost=/ s/=/=magneto/" \
+	-e "/StorageHost=/ s/localhost/${ctlname}/" \
 	-e "/#Storageport=/ s/#//" \
 	-e "/Storageport=/ s/1234/3306/" \
 	-e "/StoragePass=/ s/password/some_pass/" \
