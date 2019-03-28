@@ -33,7 +33,8 @@ sed -e "/#JobAcctGatherType=/ s/#//" \
         -e "/#AccountingStorageLoc=/ s/#//" \
         -e "/AccountingStorageLoc=/ s/=/=\/var\/lib\/mysql/" \
         -e "/#AccountingStoragePass=/ s/#//" \
-        -e "/AccountingStoragePass=/ s/=/=some_pass/" \
+        -e "/AccountingStoragePass=/ s/=/=\/var\/run\/munge\/munge.socket.2/" \
+        -e "/AccountingStoragePass=/ a\AccountingStoragePort=3306" \
         -e "/#AccountingStorageUser=/ s/#//" \
         -e "/AccountingStorageUser=/ s/=/=slurm/" \
         -e "/AccountingStorageUser=/ a\AccountingStoreJobComment=YES\\
