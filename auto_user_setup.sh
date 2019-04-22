@@ -63,11 +63,20 @@ do
 		sudo chmod 3770 $adminsync
 
 		sudo usermod -a -G users ${usernames[ii]}
-		sudo passwd ${usernames[ii]}
+
+		if [ ${userids[ii]} = 1000 ]; then 
+			sudo passwd ${usernames[ii]}
+		else
+			sudo passwd -dl ${usernames[ii]}
+		fi
 	fi
 
 	ii=$(( $ii+1 ))
 done
 
+
 echo ""
 echo "Confirm that the user setup was successful, then delete /etc/passwd.backup"
+
+echo "WARNING: Only the admin account has a functioning password."
+echo "All other logins are presently locked and disabled."
