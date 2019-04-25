@@ -14,7 +14,7 @@
 #       COMPANY:  Azimuth Corporation
 #       VERSION:  1.0
 #       CREATED:  2019-01-28
-#      REVISION:  2019-04-24
+#      REVISION:  2019-04-25
 #
 #===================================================================================
 
@@ -155,20 +155,17 @@ node_info=$(slurmd -C | grep NodeName || echo "NodeName="$HOSTNAME" CPUs=12 Boar
 
 sed -e "/ClusterName=/ s/linux/${clustername}/" \
 	-e "/ControlMachine=/ s/linux0/${ctlname}/" \
-	-e "/#ControlAddr=/ s/#//" \
-	-e "/ControlAddr=/ s/=/=${ctlhost}/" \
+	-e "/^[#]*ControlAddr=/ c\ControlAddr=${ctlhost}\\ " \
 	-e "/SlurmctldPidFile=/ s/run/run\/slurm-llnl/" \
 	-e "/SlurmdPidFile=/ s/run/run\/slurm-llnl/" \
 	-e "/ProctrackType=/ s/pgid/cgroup/" \
 	-e "/FirstJobId=/ a\RebootProgram=\"\/sbin\/reboot\"" \
-	-e "/#Prop.*R.*L.*Except=/ s/#//" \
-	-e "/Prop.*R.*L.*Except=/ s/=/=MEMLOCK/" \
-	-e "/#TaskPlugin=/ s/#//" \
-	-e "/TaskPlugin=/ s/=/=task\/cgroup/" \
-	-e "/InactiveLimit=/ s/=0/=600/" \
+	-e "/^[#]*Prop.*R.*L.*Except=/ s/#//" \
+	-e "/Prop.*R.*L.*Except=/ s/=.*/=MEMLOCK/" \
+	-e "/^[#]*TaskPlugin=/ c\TaskPlugin=task\/cgroup\\ " \
+	-e "/InactiveLimit=/ s/=.*/=600/" \
 	-e "/SchedulerType=/ a\DefMemPerNode=1000" \
-	-e "/#SelectType=/ s/#//" \
-	-e "/SelectType=/ s/linear/cons_res/" \
+	-e "/^[#]SelectType=/ c\SelectType=select/cons_res\\ " \
 	-e "/SchedulerAuth=/ a\SelectTypeParameters=CR_CPU_Memory" \
 	-e "/FastSchedule=/ a\EnforcePartLimits=YES" \
 	-e "/COMPUTE NODES/ i\# RESOURCES\\

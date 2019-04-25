@@ -15,7 +15,7 @@
 #       COMPANY:  Azimuth Corporation
 #       VERSION:  1.0
 #       CREATED:  2019-02-13
-#      REVISION:  2019-04-24
+#      REVISION:  2019-04-25
 #
 #===================================================================================
 
@@ -47,15 +47,11 @@ cp slurm.conf slurm.conf.backup
 sed -e "/#JobAcctGatherType=/ s/#//" \
 	-e "/#JobAcctGatherFrequency=/ s/#//" \
 	-e "/#AccountingStorageType=/ s/#//" \
-        -e "/#AccountingStorageHost=/ s/#//" \
-        -e "/AccountingStorageHost=/ s/=/=${ctladdr}/" \
-        -e "/#AccountingStorageLoc=/ s/#//" \
-        -e "/AccountingStorageLoc=/ s/=/=\/var\/lib\/mysql/" \
-        -e "/#AccountingStoragePass=/ s/#//" \
-        -e "/AccountingStoragePass=/ s/=/=\/var\/run\/munge\/munge.socket.2/" \
+        -e "/^[#]*AccountingStorageHost=/ c\AccountingStorageHost=${ctladdr}\\ " \
+        -e "/^[#]*Acco.*StorageLoc=/ c\AccountingStorageLoc=\/var\/lib\/mysql\\ " \
+        -e "/^[#]*Acco.*StoragePass=/ c\AccountingStoragePass=\/var\/run\/munge\/munge.socket.2\\ " \
         -e "/AccountingStoragePass=/ a\AccountingStoragePort=3306" \
-        -e "/#AccountingStorageUser=/ s/#//" \
-        -e "/AccountingStorageUser=/ s/=/=slurm/" \
+        -e "/^[#]AccountingStorageUser=/ c\AccountingStorageUser=slurm\\ " \
         -e "/AccountingStorageUser=/ a\AccountingStoreJobComment=YES\\
 AccountingStorageEnforce=associations\\
 AccountingStorageTRES=gres/gpu,gres/gpu:gtx1080ti" \
@@ -72,10 +68,8 @@ sed -e "/DbdAddr=/ s/localhost/${ctladdr}/" \
         -e "/DbdHost=/ a\#DbdBackupHost=" \
 	-e "/LogFile=/ s/\/slurm//" \
 	-e "/PidFile=/ s/run/run\/slurm-llnl/" \
-	-e "/#StorageHost=/ s/#//" \
-	-e "/StorageHost=/ s/localhost/${ctlname}/" \
-	-e "/#Storageport=/ s/#//" \
-	-e "/Storageport=/ s/1234/3306/" \
+	-e "/^[#]*StorageHost=/ c\StorageHost=${ctlname}\\ " \
+	-e "/^[#]Storageport=/ c\Storageport=3306\\ " \
 	-e "/StoragePass=/ s/password/some_pass/" \
 	-e "/#StorageLoc=/ s/#//" \
 	<slurmdbd.conf.example >slurmdbd.conf

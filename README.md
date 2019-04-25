@@ -7,10 +7,14 @@ Slurm-related:
 
 * slurmdb_initial_setup.sh : Sets up slurm database, minus the MariaDB parts
 
-Aliases:
+Other setup:
 
 * auto_user_setup.sh : Automated user setup
 
 * repo_download_w_some_setup.sh : Downloads all of our git repos and automatically installs the ones that don't require compiling
+
+* set_passwd_policy : Configures the password setting, adds a login banner, and configures unattended-upgrades
+
+* sshd_config : Configures sshd settings and banner
 
 * s4py.yml : conda environment setup required by repo_download*

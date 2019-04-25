@@ -14,54 +14,65 @@
 #       COMPANY:  Azimuth Corporation
 #       VERSION:  1.0
 #       CREATED:  2019-03-08
-#      REVISION:  2019-04-24
+#      REVISION:  2019-04-25
 #
 #===================================================================================
 
-# Make sure packages are installed
+# Installing everything
 sudo apt install openssh-server fail2ban
-
-#### SSH banner setup ####
-
-#### Adjust sshd settings ####
-echo "Adjusting sshd settings"
 
 sshdir=/etc/ssh
 sshconfig=$sshdir/sshd_config
+sshbanner=$sshdir/sshd_banner
 
-# Create banner text
-sudo cp banner_text.txt $sshdir/sshd_banner
+# Banner text
+sudo cp banner_text.txt $sshbanner
 
+# Checking for all the values sed requires
+arr=(Port LoginGraceTime PermitRootLogin StrictModes MaxAuthTries MaxSessions \
+	IgnoreUserKnownHosts PermitEmptyPasswords X11Forwarding PrintLastLog \
+	PermitUserEnvironment Compression ClientAliveInterval \
+	ClientAliveCountMax Banner)
+
+echo "Original settings, checking that all values are in the file:"
+
+ii=0
+while [ $ii -lt ${#arr[*]} ]
+do
+	grep "^[#]*${arr[$ii]}" $sshconfig
+
+	# Appends value to file for sed to catch if grep fails
+	if [ $? -ne 0 ]; then
+		echo "- Appending ${arr[$ii]} to file (currently missing)" 
+		sudo echo "${arr[$ii]}" >>$sshconfig
+	fi
+
+	ii=$(( $ii + 1 ))
+done
+
+echo ""
+echo "UsePrivilegeSeparation is depricated for openssh 7.5+!!"
+echo ""
+
+# Adjust settings
 sudo sed -i.bak \
-	-e "/Port 22/ a\Protocol 2\\ " \
-	-e "/^LoginGraceTime/ s/2m/1m/" \
-	-e "/^#PermitRootLogin/ s/#//" \
-	-e "/^PermitRootLogin/ s/Login.*/Login no/" \
-	-e "/^#StrictModes/ s/#//" \
-	-e "/^StrictModes/ s/Modes.*/Modes yes/" \
-	-e "/^MaxAuthTries/ s/6/3/" \
-	-e "/MaxSessions/ a\DenyUsers root\\
+	-e "/^[#]*Port / a\Protocol 2\\ " \
+	-e "/^[#]*LoginGraceTime/ c\LoginGraceTime 1m\\ " \
+	-e "/^[#]*PermitRootLogin/ c\PermitRootLogin no\\ " \
+	-e "/^[#]*StrictModes/ c\StrictModes yes\\ " \
+	-e "/^[#]*MaxAuthTries/ c\MaxAuthTries 3\\ " \
+	-e "/^[#]*MaxSessions/ a\DenyUsers root\\
 DenyGroups root\\
 AllowGroups users slurm\\ " \
-	-e "/IgnoreUserKnownHosts/ s/#//" \
-	-e "/IgnoreUserKnownHosts/ s/Hosts.*/Hosts yes/" \
-	-e "/^#PermitEmptyPasswords/ s/#//" \
-	-e "/^PermitEmptyPasswords/ s/words.*/words no/" \
-	-e "/^#X11forwarding/ s/#//" \
-	-e "/^X11forwarding/ s/rding.*/rding yes/" \
-	-e "/^#PrintLastLog/ s/#//" \
-	-e "/^PrintLastLog/ s/stLog.*/stLog yes/" \
-	-e "/^#PermitUserEnvironment/ s/#//" \
-	-e "/^PermitUserEnvironment/ s/nment.*/nment no/" \
-	-e "/^#Compression/ s/#//" \
-	-e "/^Compression/ s/ssion.*/ssion delayed/" \
-	-e "/^#ClientAliveInterval/ s/#//" \
-	-e "/^ClientAliveInterval/ s/erval.*/erval 600/" \
-	-e "/^#ClientAliveCountMax/ s/#//" \
-	-e "/^ClientAliveCountMax/ s/ntMax.*/ntMax 1/" \
-	-e "/^#Banner/ s/#//" \
-	-e "/^Banner/ s/Banner.*/Banner \/etc\/ssh\/sshd_banner/" \
-	-e "/^#ChrootDirectory/ a/UsePrivilegeSeparation sandbox \\ " \
+	-e "/^[#]*IgnoreUserKnownHosts/ c\IgnoreUserKnownHosts yes\\ " \
+	-e "/^[#]*PermitEmptyPasswords/ c\PermitEmptyPasswords words no\\ " \
+	-e "/^[#]*X11forwarding/ c\^X11forwarding yes\\ " \
+	-e "/^[#]*PrintLastLog/ c\PrintLastLog yes\\ " \
+	-e "/^[#]*PermitUserEnvironment/ c\PermitUserEnvironment no\\ " \
+	-e "/^[#]*Compression/ c\Compression delayed\\ " \
+	-e "/^[#]*ClientAliveInterval/ c\ClientAliveInterval 600\\ " \
+	-e "/^[#]*ClientAliveCountMax/ c\ClientAliveCountMax 1\\ " \
+	-e "/^[#]*Banner/ c\Banner \/etc\/ssh\/sshd_banner\\ " \
 	$sshconfig
 
 # Check that changes are valid
