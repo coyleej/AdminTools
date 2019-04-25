@@ -1,5 +1,23 @@
 #!/bin/bash
 
+#===================================================================================
+#
+#          FILE:  install_slurm.sh
+#
+#   DESCRIPTION:  Basic slurm installation for Ubuntu 18.04
+#
+#       OPTIONS:  ---
+#  REQUIREMENTS:  ---
+#          BUGS:  ---
+#         NOTES:  ---
+#        AUTHOR:  Eleanor Coyle, coyleej@protonmail.com
+#       COMPANY:  Azimuth Corporation
+#       VERSION:  1.0
+#       CREATED:  2019-03-08
+#      REVISION:  2019-04-24
+#
+#===================================================================================
+
 # Make sure packages are installed
 sudo apt install openssh-server fail2ban
 

@@ -1,5 +1,24 @@
 #!/bin/bash
 
+#===================================================================================
+#
+#          FILE:  repo_download_w_some_setup.sh
+#
+#   DESCRIPTION:  Downloads all of our repositories and installs the ones that don't
+#                 have to be compiled
+#
+#       OPTIONS:  ---
+#  REQUIREMENTS:  ---
+#          BUGS:  ---
+#         NOTES:  ---
+#        AUTHOR:  Eleanor Coyle, coyleej@protonmail.com
+#       COMPANY:  Azimuth Corporation
+#       VERSION:  1.0
+#       CREATED:  2019-02-27
+#      REVISION:  2019-04-24
+#
+#===================================================================================
+
 ### Download repos ###
 mkdir ~/Code
 cd ~/Code

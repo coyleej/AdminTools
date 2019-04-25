@@ -1,5 +1,23 @@
 #!/bin/bash
 
+#===================================================================================
+#
+#          FILE:  auto_user_setup.sh
+#
+#   DESCRIPTION:  Automatically creates users on the servers
+#
+#       OPTIONS:  ---
+#  REQUIREMENTS:  ---
+#          BUGS:  ---
+#         NOTES:  ---
+#        AUTHOR:  Eleanor Coyle, coyleej@protonmail.com
+#       COMPANY:  Azimuth Corporation
+#       VERSION:  1.0
+#       CREATED:  2019-03-01
+#      REVISION:  2019-04-24
+#
+#===================================================================================
+
 etcpass=/etc/passwd
 adminsync=/home/$USER/Sync
 

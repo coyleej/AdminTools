@@ -1,5 +1,24 @@
 #!/bin/bash
 
+#===================================================================================
+#
+#          FILE:  set_passwd_policy.sh
+#
+#   DESCRIPTION:  Adjusts password requirements, adds banner message to the login
+#                 screen, and setups up unattended_upgrades
+#
+#       OPTIONS:  ---
+#  REQUIREMENTS:  ---
+#          BUGS:  ---
+#         NOTES:  ---
+#        AUTHOR:  Eleanor Coyle, coyleej@protonmail.com
+#       COMPANY:  Azimuth Corporation
+#       VERSION:  1.0
+#       CREATED:  2019-03-06
+#      REVISION:  2019-04-24
+#
+#===================================================================================
+
 # SET PASSWORD POLICY
 logindefs="/etc/login.defs"
 pwquality="/etc/security/pwquality.conf"

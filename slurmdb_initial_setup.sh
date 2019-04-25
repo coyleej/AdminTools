@@ -1,5 +1,24 @@
 #!/bin/bash
 
+#===================================================================================
+#
+#          FILE:  slurmdb_initial_setup.sh
+#
+#   DESCRIPTION:  Adjusts slurm config files for slurm database installation for 
+#                 Ubuntu 18.04, must have slurm already installed and running
+#
+#       OPTIONS:  ---
+#  REQUIREMENTS:  ---
+#          BUGS:  ---
+#         NOTES:  ---
+#        AUTHOR:  Eleanor Coyle, coyleej@protonmail.com
+#       COMPANY:  Azimuth Corporation
+#       VERSION:  1.0
+#       CREATED:  2019-02-13
+#      REVISION:  2019-04-24
+#
+#===================================================================================
+
 echo "This script must be run with sudo for it to work properly"
 echo "This code assumes slurm was set up with install_slurm.sh"
 

@@ -1,5 +1,23 @@
 #!/bin/bash
 
+#===================================================================================
+#
+#          FILE:  install_slurm.sh
+#
+#   DESCRIPTION:  Basic slurm installation for Ubuntu 18.04
+#
+#       OPTIONS:  ---
+#  REQUIREMENTS:  ---
+#          BUGS:  ---
+#         NOTES:  ---
+#        AUTHOR:  Eleanor Coyle, coyleej@protonmail.com
+#       COMPANY:  Azimuth Corporation
+#       VERSION:  1.0
+#       CREATED:  2019-01-28
+#      REVISION:  2019-04-24
+#
+#===================================================================================
+
 echo "This script must be run with sudo for it to work properly"
 
 #### Install slurm ####
