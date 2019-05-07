@@ -1,6 +1,18 @@
 # AdminTools
 Collection of useful admin scripts for automating things
 
+Mandatory setup:
+
+* login_banner.sh : Creates the banner on the login screen (requires a reboot)
+
+* banner_text.sh : Banner text for sshd_banner and issue
+
+* set_passwd_policy : Configures the password setting
+
+* set_unattended_upgrades.sh : Sets up unattended upgrades 
+
+* sshd_config.sh : Configures sshd settings and banner
+
 Slurm-related:
 
 * install_slurm.sh : Initial install of slurm on Ubuntu 18.04
@@ -13,8 +25,4 @@ Other setup:
 
 * repo_download_w_some_setup.sh : Downloads all of our git repos and automatically installs the ones that don't require compiling
 
-* set_passwd_policy : Configures the password setting, adds a login banner, and configures unattended-upgrades
-
-* sshd_config : Configures sshd settings and banner
-
-* s4py.yml : conda environment setup required by repo_download*
+* s4py.yml : Conda environment setup required by repo_download*
