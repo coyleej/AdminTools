@@ -37,14 +37,14 @@ fi
 
 read -p "How many GPUs on this node? : " numGPUs
 if [ ${numGPUs} != 0 ]; then
-	read -p "GPU type? (1: gtx1080ti, 2: gtx2080ti, 3:gp107gl, 4:none): " typeGPU
+	read -p "GPU type? (1: gtx1080ti, 2: rtx2080ti, 3:quadP620, 4:none): " typeGPU
 
 	if [ ${typeGPU} == 1 ]; then
 		typeGPU="gtx1080ti"
 	elif [ ${typeGPU} == 2 ]; then
-		typeGPU="gtx2080ti"
+		typeGPU="rtx2080ti"
 	elif [ ${typeGPU} == 3 ]; then
-		typeGPU="gp107gl"
+		typeGPU="quadP640"
 	else
 		typeGPU=""
 	fi
