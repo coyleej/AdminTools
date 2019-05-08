@@ -14,7 +14,7 @@
 #       COMPANY:  Azimuth Corporation
 #       VERSION:  1.0
 #       CREATED:  2019-03-08
-#      REVISION:  2019-04-25
+#      REVISION:  2019-05-08
 #
 #===================================================================================
 
@@ -35,6 +35,7 @@ arr=(Port LoginGraceTime PermitRootLogin StrictModes MaxAuthTries MaxSessions \
 	ClientAliveCountMax Banner)
 
 echo "Original settings, checking that all values are in the file:"
+sudo cp $sshconfig $sshconfig.bak
 
 ii=0
 while [ $ii -lt ${#arr[*]} ]
@@ -55,7 +56,7 @@ echo "UsePrivilegeSeparation is depricated for openssh 7.5+!!"
 echo ""
 
 # Adjust settings
-sudo sed -i.bak \
+sudo sed -i \
 	-e "/^[#]*Port / a\Protocol 2\\ " \
 	-e "/^[#]*LoginGraceTime/ c\LoginGraceTime 1m\\ " \
 	-e "/^[#]*PermitRootLogin/ c\PermitRootLogin no\\ " \
@@ -65,7 +66,7 @@ sudo sed -i.bak \
 DenyGroups root\\
 AllowGroups users slurm\\ " \
 	-e "/^[#]*IgnoreUserKnownHosts/ c\IgnoreUserKnownHosts yes\\ " \
-	-e "/^[#]*PermitEmptyPasswords/ c\PermitEmptyPasswords words no\\ " \
+	-e "/^[#]*PermitEmptyPasswords/ c\PermitEmptyPasswords no\\ " \
 	-e "/^[#]*X11forwarding/ c\^X11forwarding yes\\ " \
 	-e "/^[#]*PrintLastLog/ c\PrintLastLog yes\\ " \
 	-e "/^[#]*PermitUserEnvironment/ c\PermitUserEnvironment no\\ " \
