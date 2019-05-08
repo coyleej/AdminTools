@@ -7,6 +7,8 @@ Mandatory setup:
 
 * banner_text.sh : Banner text for sshd_banner and issue
 
+* banner_text_short.sh : Short banner text for issue.net
+
 * set_passwd_policy : Configures the password setting
 
 * set_unattended_upgrades.sh : Sets up unattended upgrades 
