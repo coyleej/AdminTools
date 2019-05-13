@@ -5,7 +5,7 @@
 #          FILE:  set_passwd_policy.sh
 #
 #   DESCRIPTION:  Adjusts password requirements and forces the user to change 
-#                 their password.
+#                 their password. Also sets up HBSS on base.
 #
 #       OPTIONS:  ---
 #  REQUIREMENTS:  ---
@@ -22,6 +22,10 @@
 # SET PASSWORD POLICY
 logindefs="/etc/login.defs"
 pwquality="/etc/security/pwquality.conf"
+hbssSetup="install.sh"
+
+# Setup HBSS
+sudo bash $hbssSetup -i
 
 sudo sed -i.bak -e "/^PASS_MAX_DAYS/ s/[0-9]{1,}/60/" \
 	-e "/^PASS_WARN_AGE/ s/[0-9]{1,}/7/" \
@@ -58,4 +62,3 @@ else
 	echo "Something went wrong. Please fix the issue, then manually delete"
 	echo "the backup files $logindefs.bak and $pwquality.bak"
 fi
-

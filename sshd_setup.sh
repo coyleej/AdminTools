@@ -82,6 +82,8 @@ sudo sshd -t
 if [ $? = 0 ]; then
 	echo "Valid sshd config: restarting daemon"
 	sudo systemctl restart sshd
+
+	echo "MUST add users to the ssh-approved group"
 else
 	echo "ERROR: invalid sshd config. Not restarting sshd!"
 fi
