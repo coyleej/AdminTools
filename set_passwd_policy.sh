@@ -63,7 +63,7 @@ echo "* Not contain more than two of the same character in a row"
 echo "* Contain at least 2 characters not in the previous password"
 echo "* Not contain your username"
 
-passwd
+sudo passwd $USER
 
 if [ $? = 0 ]; then
 	echo "Successfully set new password"
