@@ -5,7 +5,7 @@
 #          FILE:  set_passwd_policy.sh
 #
 #   DESCRIPTION:  Adjusts password requirements and forces the user to change 
-#                 their password. Also sets up HBSS on base.
+#                 their password. Also sets up McAfee.
 #
 #       OPTIONS:  ---
 #  REQUIREMENTS:  ---
@@ -15,33 +15,48 @@
 #       COMPANY:  Azimuth Corporation
 #       VERSION:  1.0
 #       CREATED:  2019-03-06
-#      REVISION:  2019-04-25
+#      REVISION:  2019-05-14
 #
 #===================================================================================
 
 # SET PASSWORD POLICY
-logindefs="/etc/login.defs"
-pwquality="/etc/security/pwquality.conf"
+#logindefs="/etc/login.defs"
+#pwquality="/etc/security/pwquality.conf"
+logindefs="login.defs"
+pwquality="pwquality.conf"
 hbssSetup="install.sh"
 
 # Setup HBSS
-sudo bash $hbssSetup -i
+echo "Installing McAfee and HBSS ..."
+#sudo bash $hbssSetup -i
 
-sudo sed -i.bak -e "/^PASS_MAX_DAYS/ s/[0-9]{1,}/60/" \
-	-e "/^PASS_WARN_AGE/ s/[0-9]{1,}/7/" \
+echo ""
+echo "Adjusting password requirements ..."
+
+sudo chown $USER: pwquality.conf login.defs
+sudo chmod 664 pwquality.conf login.defs
+
+sudo sed -i.bak -e "/^PASS_MAX_DAYS/ s/[0-9].*/60/" \
+	-e "/^PASS_WARN_AGE/ s/[0-9].*/7/" \
 	$logindefs
 
-sudo sed -i.bak -e "/^# difok = 8/minlen = 2/" \
-	-e "/^# minlen = 8/minlen = 15/" \
-	-e "/^# dcredit = 0/dcredit = -2/" \ 
-	-e "/^# ucredit = 0/ucredit = -2/" \ 
-	-e "/^# lcredit = 0/lcredit = -2/" \ 
-	-e "/^# ocredit = 0/ocredit = -2/" \ 
-	-e "/^# minclass = 0/minclass = 4/" \ 
-	-e "/^# maxrepeat = 0/maxrepeat = 2/" \ 
-	-e "/^# usercheck/usercheck/ " \ 
+sudo sed -i.bak -e "/^# difok/ c\difok = 2" \
+	-e "/^# minlen/ c\minlen = 15" \
+	-e "/^# dcredit/ c\dcredit = -2" \
+	-e "/^# ucredit/ c\ucredit = -2" \
+	-e "/^# lcredit/ c\lcredit = -2" \
+	-e "/^# ocredit/ c\ocredit = -2" \
+	-e "/^# minclass/ c\minclass = 4" \
+	-e "/^# maxrepeat/ c\maxrepeat = 2" \
+	-e "/^# usercheck/ c\usercheck = 1 " \
 	$pwquality
 
+#sudo sed -i.bak -e "/^# difok/ c\difok = 2/" -e "/^# minlen/ c\minlen = 15/" -e "/^# dcredit/ c\dcredit = -2/" -e "/^# ucredit/ c\ucredit = -2/" -e "/^# lcredit/ c\lcredit = -2/" -e "/^# ocredit/ c\ocredit = -2/" -e "/^# minclass/ c\minclass = 4/" -e "/^# maxrepeat/ c\maxrepeat = 2/" -e "/^# usercheck/ c\usercheck = 1/ " $pwquality
+
+sudo chown root: pwquality.conf login.defs
+sudo chmod 644 pwquality.conf login.defs
+
+echo
 echo "Please set your new password. It must meet the following criteria:"
 echo "* At least 15 characters long"
 echo "* Contain at least 2 numbers"
@@ -52,7 +67,7 @@ echo "* Not contain more than two of the same character in a row"
 echo "* Contain at least 2 characters not in the previous password"
 echo "* Not contain your username"
 
-passwd
+#passwd
 
 if [ $? = 0 ]; then
 	echo "Successfully set new password"
