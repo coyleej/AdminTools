@@ -41,7 +41,10 @@ ctladdr=$( scontrol show config | grep ControlAddr | awk '{print $3}' )
 
 # Edit slurm.conf
 cd /etc/slurm-llnl/
-sudo cp slurm.conf slurm.conf.backup
+slurmConf="slurm.conf"
+sudo cp $slurmConf $slurmConf.backup
+
+sudo chown $USER: $slurmConf $slurmConf.backup
 
 sudo sed -e "/#JobAcctGatherType=/ s/#//" \
 	-e "/#JobAcctGatherFrequency=/ s/#//" \
@@ -54,14 +57,19 @@ sudo sed -e "/#JobAcctGatherType=/ s/#//" \
         -e "/AccountingStorageUser=/ a\AccountingStoreJobComment=YES\\
 AccountingStorageEnforce=associations\\
 AccountingStorageTRES=gres/gpu,gres/gpu:gtx1080ti" \
-	<slurm.conf.backup >slurm.conf
+	<$slurmConf.backup >$slurmConf
 
-# Adjusting AccountingStorageEnforce requires slurmctld restart
+sudo chown root: $slurmConf $slurmConf.backup
+
 echo ""
 echo "Restarting slurmctld daemon..."
 sudo systemctl restart slurmctld
 
 # Setup slurmdbd.conf
+slurmdbConf="slurmdbd.conf"
+
+sudo chown $USER: $slurmdbConfdb.example
+
 sudo sed -e "/DbdAddr=/ s/localhost/${ctladdr}/" \
 	-e "/DbdHost=/ s/localhost/${ctlname}/" \
         -e "/DbdHost=/ a\#DbdBackupHost=" \
@@ -71,7 +79,7 @@ sudo sed -e "/DbdAddr=/ s/localhost/${ctladdr}/" \
 	-e "/^[#]Storageport=/ c\Storageport=3306\\ " \
 	-e "/StoragePass=/ s/password/some_pass/" \
 	-e "/#StorageLoc=/ s/#//" \
-	<slurmdbd.conf.example >slurmdbd.conf
+	<$slurmdbConf.example >$slurmdbConf
 
 sudo echo "PurgeEventAfter=12months" >> slurmdbd.conf
 sudo echo "PurgeJobAfter=12months" >> slurmdbd.conf
@@ -81,15 +89,17 @@ sudo echo "PurgeSuspendAfter=1month" >> slurmdbd.conf
 sudo echo "PurgeTXNAfter=12months" >> slurmdbd.conf
 sudo echo "PurgeUsageAfter=12months" >> slurmdbd.conf
 
+sudo chown root: $slurmdbConfdb.example
+
 sudo scontrol reconfigure
 
 # Edit mariadb config file
-mdbconf=/etc/mysql/my.cnf
+mdbConf=/etc/mysql/my.cnf
 
-sudo echo "" >> ${mdbconf}
-sudo echo "[mysqld]" >> ${mdbconf}
-sudo echo "skip-networking=0" >> ${mdbconf}
-sudo echo "skip-bind-address" >> ${mdbconf}
+sudo echo "" >> ${mdbConf}
+sudo echo "[mysqld]" >> ${mdbConf}
+sudo echo "skip-networking=0" >> ${mdbConf}
+sudo echo "skip-bind-address" >> ${mdbConf}
 
 # Start database setup
 echo ""
