@@ -14,7 +14,7 @@
 #       COMPANY:  Azimuth Corporation
 #       VERSION:  1.0
 #       CREATED:  2019-01-28
-#      REVISION:  2019-04-25
+#      REVISION:  2019-05-20
 #
 #===================================================================================
 
@@ -101,7 +101,7 @@ sudo chown slurm: $spoolDir $spoolDir/d $spoolDir/ctld
 # Download example config files
 cd /home/$USER/Downloads
 wget https://github.com/SchedMD/slurm/archive/slurm-17-11-2-1.tar.gz 
-tar -xzvf slurm-17-11-2-1.tar.gz
+tar -xzf slurm-17-11-2-1.tar.gz
 
 sudo cp "./slurm-slurm-17-11-2-1/etc/"*".conf.example" "/etc/slurm-llnl/"
 
@@ -137,7 +137,10 @@ if [ $? != 0 ]; then
 fi
 
 # Setup slurm.conf
-#node_info=$(slurmd -C | grep NodeName)
+slurmConf="slurm.conf"
+sudo chown $USER: $slurmConf.example
+
+# Autofills Oryx Pro values if slurmd -C fails
 node_info=$(slurmd -C | grep NodeName || echo "NodeName="$HOSTNAME" CPUs=12 Boards=1 SocketsPerBoard=1 CoresPerSocket=6 ThreadsPerCore=2 State=UNKNOWN")
 
 sudo sed -e "/ClusterName=/ s/linux/${clustername}/" \
@@ -162,13 +165,17 @@ GresTypes=gpu\\
 #" \
 	-e "/^NodeName=linux.*Procs.*State.*/ s/NodeName.*/${node_info} Gres=gpu:${numGPUs} State=UNKNOWN/" \
 	-e "/^PartitionName=/ s/ALL Default/ALL OverSubscribe=NO Default/" \
-	<slurm.conf.example >slurm.conf
+	<$slurmConf.example >$slurmConf
 
+sudo chown root: $slurmConf.example $slurmConf
+
+# Start slurm
 echo "Initial slurm setup on $HOSTNAME finished.\nAttempting to start slurm..."
 
 pidDir=/var/run/slurm-llnl
 sudo chown slurm: $pidDir/slurmd.pid
 sudo systemctl start slurmd
+
 if [ ${ctlnode} == "Y" ]; then
 	sudo chown slurm: $pidDir/slurmcltd.pid
 	sudo systemctl start slurmctld
