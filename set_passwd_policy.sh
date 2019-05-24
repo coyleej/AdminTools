@@ -73,3 +73,8 @@ else
 	echo "Something went wrong. Please fix the issue, then manually delete"
 	echo "the backup files $logindefs.bak and $pwquality.bak"
 fi
+
+# Force HBSS to update the policies
+echo ""
+echo "Forcing HBSS policy updates..."
+/opt/McAfee/cma/bin/cmdagent -c
