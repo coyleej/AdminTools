@@ -32,7 +32,7 @@ if [ -d /etc/dconf ] && (dpkg -l | grep gdm); then
 	customConf=/etc/gdm3/custom.conf
 	sudo sed -i.bak -e "/WaylandEnable/ s/^#//" $customConf
 
-	if ( ! grep "^WaylandEnable=false" $customConf ); then
+	if ( ! grep "^WaylandEnable=false" $customConf >/dev/null); then
 		echo "Error: "$customConf" did not update successfully!"
 		echo "Error: Wayland is still enabled, will cause login issues!"
 		echo ""

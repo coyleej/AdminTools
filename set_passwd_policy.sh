@@ -24,6 +24,11 @@ logindefs="/etc/login.defs"
 pwquality="/etc/security/pwquality.conf"
 hbssSetup="install.sh"
 
+# Make sure a required package is installed
+if (! dpkg -l | grep unzip >/dev/null); then
+	sudo apt install unzip
+fi
+
 # Setup HBSS
 echo "Installing McAfee and HBSS ..."
 sudo bash $hbssSetup -i
