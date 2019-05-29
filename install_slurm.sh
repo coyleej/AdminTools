@@ -22,23 +22,30 @@ echo "Installing slurm on node "$HOSTNAME
 
 clustername="Marvel"
 ctlname="magneto"
-ctladdr="10.0.10.43"
+ctladdr="134.166.132.51"
 backupname="nebula"
-backupaddr="10.0.0.1"
+backupaddr="134.166.132.0"
 
 ### Create munge user ###
 mungeUID=399
 
-if (grep $mungeUID /etc/passwd) || (grep $mungeUID /etc/group); then
-	echo "ERROR: uid/gid $mungeUIU is claimed by another process, ABORTING SETUP!"
-	echo "Choose a different uid/gid and try again"
-	exit 1
+if (grep "munge.*$mungeUID:$mungeUID" /etc/passwd); then
+	echo "munge user already set up"
 else
-	echo "uid/gid $mungeUIU is unused, proceeding with setup"
-	sudo groupadd -g $mungeUID munge
-	sudo useradd -r -u $mungeUID -g $mungeUID -s /usr/sbin/nologin munge
-	sudo usermod -d /nonexistent munge
-	echo ""
+	# If it's set up with the wrong IDs, I have no intention of tracking everything down
+	sudo deluser munge
+	
+	if (grep "$mungeUID" /etc/passwd) || (grep "$mungeUID" /etc/group); then
+		echo "ERROR: uid/gid $mungeUIU is claimed by another process, ABORTING SETUP!"
+		echo "Choose a different uid/gid and try again"
+		exit 1
+	else
+		echo "uid/gid $mungeUIU is unused, proceeding with setup"
+		sudo groupadd -g $mungeUID munge
+		sudo useradd -r -u $mungeUID -g $mungeUID -s /usr/sbin/nologin munge
+		sudo usermod -d /nonexistent munge
+		echo ""
+	fi
 fi
 
 ### Install the things ###
@@ -133,6 +140,7 @@ sudo chown slurm: $spoolDir $spoolDir/d $spoolDir/ctld
 
 #### Config files ####
 # Download example config files
+echo ""
 cd /home/$USER/Downloads
 wget https://github.com/SchedMD/slurm/archive/slurm-17-11-2-1.tar.gz 
 tar -xzf slurm-17-11-2-1.tar.gz
@@ -143,6 +151,9 @@ cd "/etc/slurm-llnl"
 
 # Setup gres.conf
 if [ $numGPUs != 0 ]; then
+	sudo touch gres.conf
+	sudo chown $USER: gres.conf
+
 	sudo echo "Name=gpu Type="$typeGPU" File=/dev/nvidia0" > gres.conf
 
 	ii=1
@@ -151,37 +162,43 @@ if [ $numGPUs != 0 ]; then
 		sudo echo "Name=gpu Type="$typeGPU" File=/dev/nvidia"$ii >> gres.conf
 		ii=$(( $ii + 1 ))
 	done
+	sudo chown root: gres.conf
 fi
 
 # Setup cgroup.conf
+sudo chown $USER: cgroup.conf
 cat "cgroup.conf.example" | sudo sed "s/ConstrainRAMSpace=no/ConstrainRAMSpace=yes/" > cgroup.conf
+sudo chown root: cgroup.conf
 
 # Edit grub settings for cgroup
 grubFile="/etc/default/grub"
-sudo cp ${grubFile} ${grubFile}".backup"
+sudo cp $grubFile $grubFile".backup"
 
+sudo chown $USER: $grubFile
 grep "^GRUB_CMDLINE_LINUX=" /etc/default/grub | grep "cgroup_enable=memory"
 if [ $? != 0 ]; then
-	sudo sed '/GRUB_CMDLINE_LINUX=/ s/\"/ cgroup_enable=memory\"/2' <${grubFile} >${grubFile}
+	sudo sed '/GRUB_CMDLINE_LINUX=/ s/\"/ cgroup_enable=memory\"/2' <$grubFile >$grubFile
 fi
 
 grep "^GRUB_CMDLINE_LINUX=" /etc/default/grub | grep "swapaccount=1"
 if [ $? != 0 ]; then
-	sudo sed '/GRUB_CMDLINE_LINUX=/ s/\"/ swapaccount=1\"/2' <${grubFile} >${grubFile}
+	sudo sed '/GRUB_CMDLINE_LINUX=/ s/\"/ swapaccount=1\"/2' <$grubFile >$grubFile
 fi
+sudo chown root: $grubFile
 
 # Setup slurm.conf
 slurmConf="slurm.conf"
-sudo chown $USER: $slurmConf.example
+sudo cp $slurmConf.example $slurmConf
+sudo chown $USER: $slurmConf
 
 # Autofills Oryx Pro values if slurmd -C fails
 node_info=$(slurmd -C | grep NodeName || echo "NodeName="$HOSTNAME" CPUs=12 Boards=1 SocketsPerBoard=1 CoresPerSocket=6 ThreadsPerCore=2 State=UNKNOWN")
 
-sudo sed -e "/ClusterName=/ s/linux/${clustername}/" \
+#	-e "/^[#]BackupController=/ c\BackupController=${backupname}\\ " \
+#	-e "/^[#]*BackupAddr=/ c\BackupAddr=${backupaddr}\\ " \
+sudo sed -i -e "/ClusterName=/ s/linux/${clustername}/" \
 	-e "/ControlMachine=/ s/linux0/${ctlname}/" \
 	-e "/^[#]*ControlAddr=/ c\ControlAddr=${ctladdr}\\ " \
-	-e "/^[#]BackupController=/ c\BackupController=${backupname}\\ " \
-	-e "/^[#]*BackupAddr=/ c\BackupAddr=${backupaddr}\\ " \
 	-e "/SlurmctldPidFile=/ s/run/run\/slurm-llnl/" \
 	-e "/SlurmdPidFile=/ s/run/run\/slurm-llnl/" \
 	-e "/ProctrackType=/ s/pgid/cgroup/" \
@@ -199,25 +216,32 @@ GresTypes=gpu\\
 #" \
 	-e "/^NodeName=linux.*Procs.*State.*/ s/NodeName.*/${node_info} Gres=gpu:${numGPUs} State=UNKNOWN/" \
 	-e "/^PartitionName=/ s/ALL Default/ALL OverSubscribe=NO Default/" \
-	<$slurmConf.example >$slurmConf
+	$slurmConf
 
-sudo chown root: $slurmConf.example $slurmConf
+sudo chown root: $slurmConf
 
 # Start slurm
-echo "Initial slurm setup on $HOSTNAME finished.\nAttempting to start slurm..."
+echo ""
+echo "Initial slurm setup on $HOSTNAME finished."
+echo "Attempting to start slurm..."
 
 pidDir=/var/run/slurm-llnl
+sudo mkdir /var/run/slurm-llnl
+
+sudo touch $pidDir/slurmd.pid
 sudo chown slurm: $pidDir/slurmd.pid
 sudo systemctl start slurmd
 
 if [ ${ctlnode} == "Y" ]; then
+	sudo touch $pidDir/slurmcltd.pid
 	sudo chown slurm: $pidDir/slurmcltd.pid
 	sudo systemctl start slurmctld
 fi
 
 # Leaving the tarball alone, removing the extracted folder
-sudo rm -rf "/home/"$USER"/Downloads/slurm-slurm-17-11-2-1/"
+rm -rf "/home/"$USER"/Downloads/slurm-slurm-17-11-2-1/"
 
+echo ""
 echo "Manual start commands are sudo slurmd -Dvvvv and sudo slurmctld -Dvvvv"
 echo "Slurm daemons are not enabled yet. Test slurm first."
 echo "Any inter-machine communication must be set up manually!"
