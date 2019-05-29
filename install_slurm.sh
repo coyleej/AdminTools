@@ -14,7 +14,7 @@
 #       COMPANY:  Azimuth Corporation
 #       VERSION:  1.0
 #       CREATED:  2019-01-28
-#      REVISION:  2019-05-20
+#      REVISION:  2019-05-29
 #
 #===================================================================================
 
@@ -26,33 +26,67 @@ ctladdr="10.0.10.43"
 backupname="nebula"
 backupaddr="10.0.0.1"
 
+### Create munge user ###
+mungeUID=399
+
+if (grep $mungeUID /etc/passwd) || (grep $mungeUID /etc/group); then
+	echo "ERROR: uid/gid $mungeUIU is claimed by another process, ABORTING SETUP!"
+	echo "Choose a different uid/gid and try again"
+	exit 1
+else
+	echo "uid/gid $mungeUIU is unused, proceeding with setup"
+	sudo groupadd -g $mungeUID munge
+	sudo useradd -r -u $mungeUID -g $mungeUID -s /usr/sbin/nologin munge
+	sudo usermod -d /nonexistent munge
+	echo ""
+fi
+
+### Install the things ###
 sudo apt update
 sudo apt install munge libmunge-dev libpam-slurm slurmd slurmdbd slurm-wlm-doc \
 	cgroup-tools mariadb-common mariadb-server #mysql-common mysql-server
 
-if [ ${ctlname} == $HOSTNAME ]; then
+if [ $ctlname == $HOSTNAME ]; then
 	ctlnode="Y"
 	sudo apt install slurmctld slurm-wlm
 fi
 
-read -p "How many GPUs on this node? : " numGPUs
-if [ ${numGPUs} != 0 ]; then
-	read -p "GPU type? (1: gtx1080ti, 2: rtx2080ti, 3:quadP620, 4:none): " typeGPU
+### Detect GPUs ###
+maxGPUs=$(ls -l /dev/nvidia[0-9]* | wc -l); echo $maxGPUs
+echo "Detected $maxGPUs GPUs on this system"
+read -p "How many GPUs can slurm use? : " numGPUs
+echo ""
 
-	if [ ${typeGPU} == 1 ]; then
+if [ $numGPUs -gt 0 ] && [ $numGPUs -le $maxGPUs ]; then
+	echo "Available GPU types:      (GPU is available on)"
+	echo "  1 : NVidia GTX 1080ti   (compute node)"
+	echo "  2 : NVidia RTX 2080ti   (compute node)"
+	echo "  3 : NVidia Quadro P640  (control node)"
+	echo "  4 : NVidia GTX 1070     (Oryx Pro)"
+	echo "  5 : omit GPU label      (any)"
+	read -p "GPU type? (int) : " typeGPU
+
+	if [ $typeGPU == 1 ]; then
 		typeGPU="gtx1080ti"
-	elif [ ${typeGPU} == 2 ]; then
+	elif [ $typeGPU == 2 ]; then
 		typeGPU="rtx2080ti"
-	elif [ ${typeGPU} == 3 ]; then
+	elif [ $typeGPU == 3 ]; then
 		typeGPU="quadP640"
+	elif [ $typeGPU == 4 ]; then
+		typeGPU="gtx1070"
 	else
 		typeGPU=""
 	fi
+else
+	echo "WARNING : Invalid number of GPUs specified!"
+	echo "WARNING : Setting the number of GPUs = 0"
 fi
+
+echo ""
 
 #### Creating log files ####
 # Control node
-if [ ${ctlnode} == "Y" ]; then
+if [ $ctlnode == "Y" ]; then
 	logDir=/var/log
 	pidDir=/var/log/slurm-llnl
 	spoolDir=/var/spool/slurmctld
@@ -108,13 +142,13 @@ sudo cp "./slurm-slurm-17-11-2-1/etc/"*".conf.example" "/etc/slurm-llnl/"
 cd "/etc/slurm-llnl"
 
 # Setup gres.conf
-if [ ${numGPUs} != 0 ]; then
-	sudo echo "Name=gpu Type="${typeGPU}" File=/dev/nvidia0" > gres.conf
+if [ $numGPUs != 0 ]; then
+	sudo echo "Name=gpu Type="$typeGPU" File=/dev/nvidia0" > gres.conf
 
 	ii=1
-	while [ $ii -lt ${numGPUs} ]
+	while [ $ii -lt $numGPUs ]
 	do
-		sudo echo "Name=gpu Type="${typeGPU}" File=/dev/nvidia"${ii} >> gres.conf
+		sudo echo "Name=gpu Type="$typeGPU" File=/dev/nvidia"$ii >> gres.conf
 		ii=$(( $ii + 1 ))
 	done
 fi
