@@ -1,32 +1,65 @@
-# AdminTools
+# MiniCluster Tools
 Collection of useful admin scripts for automating things
 
-Mandatory setup:
+## Mandatory setup
 
-* login_banner.sh : Creates the banner on the login screen (requires a reboot)
+### login_banner.sh 
 
-* banner_text.sh : Banner text for sshd_banner and issue
+Sets /etc/issue and /etc/issue.net. Creates the banner on the login screen (requires a reboot).
 
-* banner_text_short.sh : Short banner text for issue.net
+### set_passwd_policy.sh 
 
-* install.sh : HBSS setup script
+Configures the password settings and installs HBSS.
 
-* set_passwd_policy : Configures the password setting
+### set_unattended_upgrades.sh 
 
-* set_unattended_upgrades.sh : Sets up unattended upgrades 
+Sets up unattended upgrades.
 
-* sshd_config.sh : Configures sshd settings and banner
+### sshd_config.sh 
 
-Slurm-related:
+Configures sshd settings and sets the SSH login banner (servers only).
 
-* install_slurm.sh : Initial install of slurm on Ubuntu 18.04
+## Slurm-related
 
-* slurmdb_initial_setup.sh : Sets up slurm database, minus the MariaDB parts
+### install_slurm.sh 
 
-Other setup:
+Sets up Slurm 17.11.2-1build1 on a machine running Ubuntu 18.04 based on given settings. It configures $HOSTNAME to be part of the cluster (adjusts slurm.conf, creates log and spool directories) and sets up everything locally. Manually append other nodes and partitions to slurm.conf if there is more than one node.
 
-* auto_user_setup.sh : Automated user setup
+### slurmdb_initial_setup.sh 
 
-* repo_download_w_some_setup.sh : Downloads all of our git repos and automatically installs the ones that don't require compiling
+Modifies slurm.conf and slurmdbd.conf to set up the slurm database. It attempts to start MariaDB to check installation success but does not modify MariaDB or create slurm accounting associations.
 
-* s4py.yml : Conda environment setup required by repo_download*
+## Other setup
+
+### auto_user_setup.sh
+
+Automated user setup
+
+### repo_download_w_some_setup.sh 
+
+Downloads all of our git repos and automatically installs the ones that don't require compiling.
+
+## Monitoring scripts
+
+### downtime.py 
+
+Monitors internet connection and tracks downtime.
+
+## Required files called by the above
+
+### banner_text.txt 
+
+Banner text for sshd_banner and issue, required by login_banner.sh and sshd_config.sh
+
+### banner_text_short.txt 
+
+Short banner text for issue.net, required by login_banner.sh
+
+### install.sh 
+
+HBSS setup script, called by set_passwd_policy.sh
+
+### s4py.yml 
+
+Conda environment setup, required by repo_download_w_some_setup.sh
+
