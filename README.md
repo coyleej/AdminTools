@@ -1,6 +1,8 @@
 # MiniCluster Tools
 Collection of useful admin scripts for automating things
 
+All shell scripts were written to work with bash. (I tried to maintain POSIX compliance, but I've not tested these in other shells.)
+
 ## Mandatory setup
 
 ### login_banner.sh 

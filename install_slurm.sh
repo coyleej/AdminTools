@@ -50,12 +50,14 @@ fi
 
 ### Install the things ###
 sudo apt update
-sudo apt install munge libmunge-dev libpam-slurm slurmd slurmdbd slurm-wlm-doc \
+sudo apt install munge libmunge-dev libpam-slurm slurmd slurm-wlm-doc \
 	cgroup-tools mariadb-common mariadb-server #mysql-common mysql-server
 
 if [ $ctlname == $HOSTNAME ]; then
 	ctlnode="Y"
-	sudo apt install slurmctld slurm-wlm
+	sudo apt install slurmctld slurm-wlm slurmdbd
+else
+	ctlnode="N"
 fi
 
 ### Detect GPUs ###
@@ -232,7 +234,7 @@ sudo touch $pidDir/slurmd.pid
 sudo chown slurm: $pidDir/slurmd.pid
 sudo systemctl start slurmd
 
-if [ ${ctlnode} == "Y" ]; then
+if [ $ctlnode == "Y" ]; then
 	sudo touch $pidDir/slurmcltd.pid
 	sudo chown slurm: $pidDir/slurmcltd.pid
 	sudo systemctl start slurmctld
