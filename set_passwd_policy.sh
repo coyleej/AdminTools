@@ -15,7 +15,7 @@
 #       COMPANY:  Azimuth Corporation
 #       VERSION:  1.0
 #       CREATED:  2019-03-06
-#      REVISION:  2019-05-14
+#      REVISION:  2019-05-29
 #
 #===================================================================================
 
@@ -29,10 +29,24 @@ if (! dpkg -l | grep unzip >/dev/null); then
 	sudo apt install unzip
 fi
 
-# Setup HBSS
+### Setup HBSS ###
 echo "Installing McAfee and HBSS ..."
 sudo bash $hbssSetup -i
 
+# Set mfe (McAfee) gid and uid to 999
+newID=999
+
+mfeID=$(grep mfe /etc/group | cut -d ":" -f 3)
+if [ mfeID -ne $newID ]; then
+	sudo groupmod -g $newID mfe
+fi
+
+mfeID=$(grep mfe /etc/passwd | cut -d ":" -f 3)
+if [ mfeID -ne $newID ]; then
+	sudo usermod -u $newID mfe
+fi
+
+### Password setup ###
 echo ""
 echo "Adjusting password requirements ..."
 
