@@ -197,6 +197,8 @@ if [ $? != 0 ]; then
 fi
 sudo chown root: $grubFile
 
+sudo update-grub
+
 # Setup slurm.conf
 slurmConf="slurm.conf"
 sudo cp $slurmConf.example $slurmConf

@@ -102,8 +102,10 @@ if [ $condaEnv != None ]; then
 	fi
 fi
 
-cd ~/Code/MANTIS/tests
-python -m unittest
+
+# The unit test will only work after logging in again
+#cd ~/Code/MANTIS/tests
+#python -m unittest
 
 # Print /etc/environment to the screen
 echo ""
@@ -114,3 +116,11 @@ echo ""
 echo "NOTE: Pybind11, OpenBLAS, and S4 have beeen downloaded but not installed"
 echo "They must be installed manually."
 echo "MANTIS is useless without these three packages!"
+echo ""
+
+echo "If you wish to check that MANTIS installed properly you must"
+echo "log out, log back in, and run the following:"
+echo ""
+echo "cd ~/Code/MANTIS/tests"
+echo "python -m unittest"
+
