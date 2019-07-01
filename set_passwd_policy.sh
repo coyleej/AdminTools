@@ -36,7 +36,8 @@ sudo bash $hbssSetup -i
 # Set mfe (McAfee) gid and uid to 999
 newID=999
 
-mfeID=$(grep mfe /etc/group | cut -d ":" -f 3)
+#mfeID=$(grep mfe /etc/group | cut -d ":" -f 3)
+mfeID=$(grep mfe /etc/passwd | cut -d ":" -f 4)
 if [ mfeID -ne $newID ]; then
 	sudo groupmod -g $newID mfe
 fi
