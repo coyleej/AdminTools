@@ -14,7 +14,7 @@
 #       COMPANY:  Azimuth Corporation
 #       VERSION:  1.0
 #       CREATED:  2019-01-28
-#      REVISION:  2019-05-29
+#      REVISION:  2019-06-06
 #
 #===================================================================================
 
@@ -48,16 +48,25 @@ else
 	fi
 fi
 
+### Set system clock ###
+sudo timedatectl set-timezone America/New_York
+#timedatectl
+
 ### Install the things ###
 sudo apt update
+
+sudo apt install libopenmpi2 libopenmpi-dev openmpi-common openmpi-doc
+
 sudo apt install munge libmunge-dev libpam-slurm slurmd slurm-wlm-doc \
-	cgroup-tools mariadb-common mariadb-server #mysql-common mysql-server
+	slurm-wlm-basic-plugins cgroup-tools mariadb-common mariadb-server 
+	#mysql-common mysql-server
 
 if [ $ctlname == $HOSTNAME ]; then
 	ctlnode="Y"
 	sudo apt install slurmctld slurm-wlm slurmdbd
 else
 	ctlnode="N"
+	sudo apt install slurm-client
 fi
 
 ### Detect GPUs ###
@@ -168,9 +177,9 @@ if [ $numGPUs != 0 ]; then
 fi
 
 # Setup cgroup.conf
-sudo chown $USER: cgroup.conf
+sudo chown $USER: cgroup.conf.example
 cat "cgroup.conf.example" | sudo sed "s/ConstrainRAMSpace=no/ConstrainRAMSpace=yes/" > cgroup.conf
-sudo chown root: cgroup.conf
+sudo chown root: cgroup.conf cgroup.conf.example
 
 # Edit grub settings for cgroup
 grubFile="/etc/default/grub"
