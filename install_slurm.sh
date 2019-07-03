@@ -36,11 +36,11 @@ else
 	sudo deluser munge
 	
 	if (grep "$mungeUID" /etc/passwd) || (grep "$mungeUID" /etc/group); then
-		echo "ERROR: uid/gid $mungeUIU is claimed by another process, ABORTING SETUP!"
+		echo "ERROR: uid/gid $mungeUID is claimed by another process, ABORTING SETUP!"
 		echo "Choose a different uid/gid and try again"
 		exit 1
 	else
-		echo "uid/gid $mungeUIU is unused, proceeding with setup"
+		echo "uid/gid $mungeUID is unused, proceeding with setup"
 		sudo groupadd -g $mungeUID munge
 		sudo useradd -r -u $mungeUID -g $mungeUID -s /usr/sbin/nologin munge
 		sudo usermod -d /nonexistent munge
