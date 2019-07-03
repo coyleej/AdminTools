@@ -63,7 +63,7 @@ else
 fi
 
 ### Start setup ###
-sudo apt install python3-pip
+sudo apt install cmake cmake-curses-gui ninja-build gfortran libfftw3-dev libopenmpi-dev python3-dev python3-numpy python-dev python-numpy python3-mpi4py python3-pip python3-pytest
 
 ### MANTIS install ###
 # Preserving Eric's needless pip3 paranoia
@@ -114,6 +114,7 @@ cat $envfile
 echo ""
 
 echo "NOTE: Pybind11, OpenBLAS, and S4 have beeen downloaded but not installed"
+echo "NOTE: all required dependencies have been downloaded with apt"
 echo "They must be installed manually."
 echo "MANTIS is useless without these three packages!"
 echo ""
@@ -121,6 +122,6 @@ echo ""
 echo "If you wish to check that MANTIS installed properly you must"
 echo "log out, log back in, and run the following:"
 echo ""
-echo "cd ~/Code/MANTIS/tests"
-echo "python -m unittest"
+echo "$ cd ~/Code/MANTIS/tests"
+echo "$ python -m unittest"
 

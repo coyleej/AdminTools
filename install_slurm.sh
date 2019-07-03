@@ -50,18 +50,47 @@ fi
 
 ### Set system clock ###
 sudo timedatectl set-timezone America/New_York
-#timedatectl
 
 ### Install the things ###
 sudo apt update
 
+# Checking NVidia drivers, installing from the PPA
+echo ""
+if [ ! -e /etc/apt/trusted.gpg.d/graphics-drivers_ubuntu_ppa.gpg ]; then
+	sudo add-apt-repository ppa:graphics-drivers/ppa
+	sudo apt update
+fi
+
+# The version you currently have
+echo ""
+nvidiaVer==$(dpkg -l | grep "nvidia-driver" | cut -d " " -f 3 | cut -d "-" -f 3)
+
+# Make sure version nvidia-driver-418 or newer is installed
+if [ $nvidiaVer -ge 418 ]; then 
+	echo "Valid driver installed"
+else
+	echo "Purging old NVidia driver"
+	sudo apt purge nvidia-driver-$nvidiaVer
+	echo ""
+	echo "Installing new NVidia driver"
+	sudo apt install nvidia-driver-418
+fi
+
+# OpenMPI
+echo ""
 sudo apt install libopenmpi2 libopenmpi-dev openmpi-common openmpi-doc
 
+# Slurm and MariaDB
+echo ""
 sudo apt install munge libmunge-dev libpam-slurm slurmd slurm-wlm-doc \
 	slurm-wlm-basic-plugins cgroup-tools mariadb-common mariadb-server 
 	#mysql-common mysql-server
 
+echo ""
 if [ $ctlname == $HOSTNAME ]; then
+	ctlnode="Y"
+	sudo apt install slurmctld slurm-wlm slurmdbd
+elif [ $backupname == $HOSTNAME ]; then
 	ctlnode="Y"
 	sudo apt install slurmctld slurm-wlm slurmdbd
 else
@@ -102,7 +131,7 @@ fi
 
 echo ""
 
-#### Creating log files ####
+#### Create log and state save files ####
 # Control node
 if [ $ctlnode == "Y" ]; then
 	logDir=/var/log
@@ -149,8 +178,12 @@ sudo mkdir -p $spoolDir/d
 sudo mkdir $spoolDir/ctld
 sudo chown slurm: $spoolDir $spoolDir/d $spoolDir/ctld
 
+spoolDir=/var/spool/slurmd
+sudo mkdir $spoolDir
+sudo chown slurm: $spoolDir
+
 #### Config files ####
-# Download example config files
+# Download example config files from github
 echo ""
 cd /home/$USER/Downloads
 wget https://github.com/SchedMD/slurm/archive/slurm-17-11-2-1.tar.gz 
@@ -199,7 +232,7 @@ sudo chown root: $grubFile
 
 sudo update-grub
 
-# Setup slurm.conf
+#### Setup slurm.conf ####
 slurmConf="slurm.conf"
 sudo cp $slurmConf.example $slurmConf
 sudo chown $USER: $slurmConf
@@ -233,7 +266,7 @@ GresTypes=gpu\\
 
 sudo chown root: $slurmConf
 
-# Start slurm
+#### Start slurm ####
 echo ""
 echo "Initial slurm setup on $HOSTNAME finished."
 echo "Attempting to start slurm..."
