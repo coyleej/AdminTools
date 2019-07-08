@@ -14,7 +14,7 @@
 #       COMPANY:  Azimuth Corporation
 #       VERSION:  1.0
 #       CREATED:  2019-01-28
-#      REVISION:  2019-06-06
+#      REVISION:  2019-07-08
 #
 #===================================================================================
 
@@ -22,9 +22,9 @@ echo "Installing slurm on node "$HOSTNAME
 
 clustername="Marvel"
 ctlname="magneto"
-ctladdr="134.166.132.51"
+ctladdr="XXX.XXX.XXX.XX"
 backupname="nebula"
-backupaddr="134.166.132.0"
+backupaddr="XXX.XXX.XXX.XX"
 
 ### Create munge user ###
 mungeUID=399
@@ -44,12 +44,17 @@ else
 		sudo groupadd -g $mungeUID munge
 		sudo useradd -r -u $mungeUID -g $mungeUID -s /usr/sbin/nologin munge
 		sudo usermod -d /nonexistent munge
-		echo ""
 	fi
 fi
 
 ### Set system clock ###
+echo ""
 sudo timedatectl set-timezone America/New_York
+timedatectl
+echo ""
+echo "Pausing install to clearly display system clock"
+echo "Installation will continue in 15 seconds..."
+sleep 15
 
 ### Install the things ###
 sudo apt update
@@ -66,8 +71,14 @@ echo ""
 nvidiaVer==$(dpkg -l | grep "nvidia-driver" | cut -d " " -f 3 | cut -d "-" -f 3)
 
 # Make sure version nvidia-driver-418 or newer is installed
-if [ $nvidiaVer -ge 418 ]; then 
+if [ ! $nvidiaVer ]; then
+	# No NVidia driver installed
+	echo "Installing new NVidia driver"
+	sudo apt install nvidia-driver-418
+
+elif [ $nvidiaVer -ge 418 ]; then 
 	echo "Valid driver installed"
+
 else
 	echo "Purging old NVidia driver"
 	sudo apt purge nvidia-driver-$nvidiaVer
@@ -99,7 +110,9 @@ else
 fi
 
 ### Detect GPUs ###
-maxGPUs=$(ls -l /dev/nvidia[0-9]* | wc -l); echo $maxGPUs
+echo ""
+maxGPUs=$(ls -l /dev/nvidia[0-9]* | wc -l)
+echo $maxGPUs
 echo "Detected $maxGPUs GPUs on this system"
 read -p "How many GPUs can slurm use? : " numGPUs
 echo ""
@@ -129,9 +142,8 @@ else
 	echo "WARNING : Setting the number of GPUs = 0"
 fi
 
-echo ""
-
 #### Create log and state save files ####
+echo ""
 # Control node
 if [ $ctlnode == "Y" ]; then
 	logDir=/var/log
@@ -217,8 +229,8 @@ sudo chown root: cgroup.conf cgroup.conf.example
 # Edit grub settings for cgroup
 grubFile="/etc/default/grub"
 sudo cp $grubFile $grubFile".backup"
-
 sudo chown $USER: $grubFile
+
 grep "^GRUB_CMDLINE_LINUX=" /etc/default/grub | grep "cgroup_enable=memory"
 if [ $? != 0 ]; then
 	sudo sed '/GRUB_CMDLINE_LINUX=/ s/\"/ cgroup_enable=memory\"/2' <$grubFile >$grubFile
@@ -228,8 +240,8 @@ grep "^GRUB_CMDLINE_LINUX=" /etc/default/grub | grep "swapaccount=1"
 if [ $? != 0 ]; then
 	sudo sed '/GRUB_CMDLINE_LINUX=/ s/\"/ swapaccount=1\"/2' <$grubFile >$grubFile
 fi
-sudo chown root: $grubFile
 
+sudo chown root: $grubFile
 sudo update-grub
 
 #### Setup slurm.conf ####
@@ -290,5 +302,5 @@ rm -rf "/home/"$USER"/Downloads/slurm-slurm-17-11-2-1/"
 echo ""
 echo "Manual start commands are sudo slurmd -Dvvvv and sudo slurmctld -Dvvvv"
 echo "Slurm daemons are not enabled yet. Test slurm first."
-echo "Any inter-machine communication must be set up manually!"
+echo "Inter-machine communication must be set up manually!"
 echo "This script does not perform any database setup."

@@ -14,14 +14,14 @@
 #       COMPANY:  Azimuth Corporation
 #       VERSION:  1.0
 #       CREATED:  2019-05-06
-#      REVISION:  2019-05-08
+#      REVISION:  2019-07-08
 #
 #===================================================================================
  
 # Create /etc/issue and /etc/issue.net
 sudo chown $USER: /etc/issue /etc/issue.net
-sudo cat banner_text.txt >> /etc/issue
-sudo cat banner_text_short.txt >> /etc/issue.net
+sudo cat files/banner_text.txt >> /etc/issue
+sudo cat files/banner_text_short.txt >> /etc/issue.net
 sudo chown root: /etc/issue /etc/issue.net
 
 if [ -d /etc/dconf ] && (dpkg -l | grep gdm); then

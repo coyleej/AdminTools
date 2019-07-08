@@ -1,0 +1,95 @@
+\documentclass[10pt,letterpaper]{report}
+\usepackage[utf8]{inputenc}
+\usepackage[paper=letterpaper,margin=1in]{geometry}
+\usepackage[hyphens]{url}
+\usepackage{multirow}
+\usepackage{hyperref}
+% hyperref can automatically color links with \usepackage[colorlinks=true,linkcolor=blue]{hyperref}
+\makeatletter
+\g@addto@macro{\UrlBreaks}{\UrlOrds}
+\makeatother
+
+\title{MiniClusterTools documentation}
+\author{Eleanor Coyle}
+\date{\today}
+
+\begin{document}
+
+\begin{titlepage}
+	\centering
+	\vfill
+	{\huge\scshape MiniClusterTools Documentation\par}
+
+	\vspace{3cm}
+	\textbf{Repo: \href{https://github.com/coyleej/MiniClusterTools}{https://github.com/coyleej/MiniClusterTools}}
+
+	\vspace{0.5cm}
+	\textbf{Author: Eleanor Coyle}
+
+	\vspace{3cm}
+	\textbf{Important notes} \par
+
+	These scripts were developed to work with the following operating system and shell. If you are using a different operating system or a different version of Ubuntu, you will likely need to make modifications. I tried to maintain POSIX compliance with the shell scripts, but I make no promises. \\
+	
+	\vspace{1cm}
+	\textbf{Operating System} \par
+	Ubuntu 18.04
+
+	\vspace{1cm}
+	\textbf{Shell} \par
+	\texttt{bash}	
+
+	\vspace{1cm}
+	\textbf{Documentation} \par
+	This documentation automatically pulls relevant information from a larger, actively updated document. 
+	As a result, some internal references point to information that is not included. 
+	A few broken links seemed a reasonable compromise to ensure up-to-date documentation.
+
+\end{titlepage}
+
+\tableofcontents
+
+%%%%% SETUP %%%%%
+\chapter{Setup Scripts}			\label{ch:setup}
+
+\section{sshd\_setup}			\label{sec:openssh}
+	\input{./Chapters/SshdSetup.tex}
+
+\section{login\_banner}			\label{sec:login}
+	\input{./Chapters/LoginBanner.tex}
+
+\section{unattended\_upgrades}		\label{sec:mandatoryautoupgrades}
+	\input{./Chapters/UnattendedUpgrades.tex}
+
+\section{set\_password\_policy} 		\label{sec:passwd}
+\subsection{Password policy} 		\label{subsec:passwdpolicy}
+	\input{./Chapters/PasswordPolicy.tex}
+\subsection{HBSS}			\label{subsec:HBSS}
+	\input{./Chapters/HBSS.tex}
+
+\section{auto\_user\_setup}		\label{sec:users}
+This works on test files. It has not been used for actual setup as of now, so I cannot guarantee full functionality.
+
+%%%%% INSTALLATION %%%%%
+\chapter{Installation scripts}		\label{ch:install}
+
+\section{repo\_download\_w\_some\_install}	\label{sec:repoDL}
+Downloads all of the necessary machine learning repos (pybind11, OpenBLAS, S4, MANTIS, and signac) and installs both MANTIS and Signac. Users must compile the other packages themselves.
+
+	\input{./Chapters/MLinstall.tex}
+
+%%%%% MONITORING %%%%%
+\chapter{Monitoring scripts}		\label{ch:monitor}
+
+\section{downtime.py}			\label{sec:downtime}
+Used for monitoring downtime. It is a modified version of script created by waleedahmad. The original version can be found \href{https://gist.github.com/waleedahmad/326ec53f76646dccec299910a7fb4f2b}{on waleedahmad's github page}.
+
+%\section{kill_old_processes}		\label{sec:kill}
+%Prevents memory leaks caused by \texttt{tmux}.
+
+%%%%% SLURM %%%%%
+% All slurm-related setup, chapter header in file
+\input{./Chapters/SlurmSetup.tex}
+
+\end{document}
+

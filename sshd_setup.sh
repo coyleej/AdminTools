@@ -14,7 +14,7 @@
 #       COMPANY:  Azimuth Corporation
 #       VERSION:  1.0
 #       CREATED:  2019-03-08
-#      REVISION:  2019-05-08
+#      REVISION:  2019-07-08
 #
 #===================================================================================
 
@@ -26,7 +26,7 @@ sshconfig=$sshdir/sshd_config
 sshbanner=$sshdir/sshd_banner
 
 # Banner text
-sudo cp banner_text.txt $sshbanner
+sudo cp files/banner_text.txt $sshbanner
 
 # Checking for all the values sed requires
 arr=(Port LoginGraceTime PermitRootLogin StrictModes MaxAuthTries MaxSessions \

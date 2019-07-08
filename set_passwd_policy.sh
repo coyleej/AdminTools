@@ -31,7 +31,9 @@ fi
 
 ### Setup HBSS ###
 echo "Installing McAfee and HBSS ..."
+cd files/
 sudo bash $hbssSetup -i
+cd ../
 
 # Set mfe (McAfee) gid and uid to 999
 newID=999

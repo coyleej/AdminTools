@@ -15,7 +15,7 @@
 #       COMPANY:  Azimuth Corporation
 #       VERSION:  1.0
 #       CREATED:  2019-02-27
-#      REVISION:  2019-04-24
+#      REVISION:  2019-07-08
 #
 #===================================================================================
 
@@ -87,7 +87,9 @@ sudo pip3 install . --target="/opt" --no-deps --no-dependencies
 echo "Testing MANTIS install..."
 echo ""
 if [ ! -d ~/.conda/envs/s4py ]; then
+	cd files
 	conda env create -f s4py.yml;
+	cd ../
 fi
 
 # Checks if you are already a conda environment

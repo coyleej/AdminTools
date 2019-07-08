@@ -1,0 +1,85 @@
+This setup is automated in the \texttt{sshd\_setup.sh} file from \href{https://github.com/coyleej/MiniClusterTools}{MiniClusterTools repository}. 
+
+\begin{enumerate}
+\item Install \texttt{fail2ban} and \texttt{openssh-server} with \texttt{apt}. We'll use the default: ban IP addresses that exceed 5 failed tries in 10 minutes. (Never modify \texttt{/etc/fail2ban/jail.conf}! Copy it into \texttt{jail.local} and modify that.)
+
+\item We're required to display \href{https://www.stigviewer.com/stig/firewall/2015-09-18/finding/V-3013}{a banner message (option A)} on the servers prior to login. It will be activated in a few steps. For now, we're just creating it.
+
+	\begin{enumerate}
+		\item Create the login banner file: 
+
+			\texttt{sudo touch /etc/ssh/sshd\_banner}
+
+		\item Add the warning (\href{https://www.stigviewer.com/stig/firewall/2015-09-18/finding/V-3013}{found here}). 
+	\end{enumerate}
+
+\item Open \href{https://linux.die.net/man/5/sshd_config}{\texttt{/etc/ssh/sshd\_config}} and change some \texttt{ssh} settings.
+
+	The convention in this file is to have default settings commented out. \emph{Only uncomment something if you are changing the value from the default!} Note: We are making an exception to this convention for the values the base has explicitly requested.
+
+	\begin{enumerate}
+	\item Specify that all \texttt{ssh} access to the servers must use protocol 2 by adding the following right below the line \texttt{\#Port 22}.
+
+		\texttt{Protocol 2}
+
+	\item Change \texttt{LoginGraceTime} to \texttt{1m}
+
+	This changes the allowable time between typing \texttt{ssh <server>} and entering a password.
+
+	\item Change \texttt{PermitRootLogin} to \texttt{no}
+
+	\item Uncomment \texttt{StrictModes} to \texttt{yes} (default value)
+
+	\item Change \texttt{MaxAuthTries} to \texttt{3}
+
+	This allows three password attempts after typing \texttt{ssh <server>} before resetting.
+
+	\item Restrict who is allowed to remotely access the server. Add these lines below \texttt{MaxSessions}:
+	\begin{verbatim}
+	DenyUsers root
+	DenyGroups root
+	AllowGroups users slurm 
+	\end{verbatim}
+
+	Only groups \texttt{users} and \texttt{slurm} are able to \texttt{ssh} or \texttt{sftp}. All (human) users should be placed in group \texttt{users} when creating their accounts! See chapter \ref{ch:users} for managing group membership.
+
+	Technically the \texttt{Deny\dots} statements are redundant. \texttt{root} is already forbidden from using \texttt{ssh} because its password is disabled and locked.
+
+	\item Change \texttt{IgnoreUserKnownHosts} to \texttt{yes}
+
+	\item Uncomment \texttt{PermitEmptyPasswords} to \texttt{no} (default value)
+
+	\item Uncomment \texttt{X11Forwarding} to \texttt{yes} (default value)
+
+	\item Have it print the last login for \texttt{\$USER} (NOTE: While the convention would suggest that \texttt{yes} is the default, someone typo'd. The default is actually \texttt{no}.)
+
+		\texttt{PrintLastLog yes}
+
+	\item Uncomment \texttt{PermitUserEnvironment} to \texttt{no} (default value)
+
+	\item Uncomment \texttt{Compression} to \texttt{delayed} (default value)
+
+	\item Change \texttt{ClientAliveInterval} to \texttt{600}
+
+	\item Change \texttt{ClientAliveCountMax} to \texttt{1}
+
+	\item Display the banner text in between typing \texttt{ssh <user>@<server>} and password entry
+
+		\texttt{Banner /etc/ssh/sshd\_banner}
+
+	\item \texttt{UsePrivilegeSeparation sandbox} \emph{is \href{https://www.openssh.com/txt/release-7.5}{depricated starting with \emph{\texttt{openssh 7.5}}!} We are using \emph{\texttt{openssh 7.6}}.} Privilege separation is now mandatory. Including this line results in a warning when checking the configuration.
+
+	\end{enumerate}
+
+\item Check that \texttt{sshd\_config} is valid and error-free:
+
+	\texttt{sudo sshd -t}
+
+\item Reload the daemon: 
+
+	\texttt{sudo systemctl restart sshd}
+
+\item Test by logging in again.
+
+\end{enumerate}
+

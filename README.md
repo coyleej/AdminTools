@@ -1,6 +1,8 @@
 # MiniCluster Tools
 Collection of useful admin scripts for automating things
 
+Please see the doc/ directory for all documentation. The following are brief descriptions of what everything does.
+
 All shell scripts were written to work with bash. (I tried to maintain POSIX compliance, but I've not tested these in other shells.)
 
 ## Mandatory setup
@@ -47,7 +49,7 @@ Downloads all of our git repos and automatically installs the ones that don't re
 
 Monitors internet connection and tracks downtime.
 
-## Required files called by the above
+## Required files called by the above (the files/ directory)
 
 ### banner_text.txt 
 
@@ -65,3 +67,8 @@ HBSS setup script, called by set_passwd_policy.sh
 
 Conda environment setup, required by repo_download_w_some_setup.sh
 
+## Documentation (the doc/ directory)
+
+Hopefully self-explanatory. Contains a number of .tex files.
+
+NOTE: this documentation automatically pulls relevant information from a larger, actively updated document. As a result, some of the internal references point to information that is not included. A few broken links seemed a reasonable compromise to ensure that all documentation is up to date.
