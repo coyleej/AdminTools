@@ -1,6 +1,6 @@
 \chapter{Slurm setup and administration} \label{ch:slurmsetup}
 
-\textbf{\emph{This setup works on Ubuntu 18.04.}}
+\textbf{\emph{This setup works on Ubuntu 18.04 and Ubuntu Server 18.04.}}
 
 SchedMD recommends a separate database server if possible. It may be on the same server as \texttt{slurmctld}, but this may impact performance. You should consider optimizing the database performance by mounting the MariaDB or MySQL database directory on a dedicated high-speed file system. Ideally this would be a PCIe SSD disk drive (e.g.\ Intel SSD P3700 series or Kingston E1000 series), but SSD SAS/SATA will also work. Drives must be qualified for high-volume random small read/write operations, and should be built with the Non-Volatile Memory Express (NVMe) storage interface standard for reliability and performance. A disk size of 200 GB or 400 GB should be sufficient. Consider installing 2 disk drives in a RAID-1 configuration.
 
@@ -616,7 +616,7 @@ Accounting records are maintained based on ``associations" consisting of four el
 
 %		Is it \texttt{sacctmgr add user <username>} or \texttt{sacctmgr add user name=<username>}?
 
-		\texttt{Account} can take a single account or a comma separated list. Not specifying \texttt{Account} will give the user access to all accounts on the cluster. \texttt{DefaultAccount} will set the default account for a user. At least one of the two options is required.
+		\texttt{Account} can take a single account or a comma separated list. Not specifying \texttt{Account} will give the user access to all accounts on the cluster. \texttt{DefaultAccount} will set the default account for a user. At least one of the two options is required. \\
 
 
 	\item Commands to view accounting information:
@@ -799,18 +799,16 @@ When adding/removing nodes, do the following:
 Nodes may need to be rebooted after firmware or kernel upgrades. Reboot them as they become idle using the \texttt{RebootProgram} as configured in \texttt{slurm.conf}. Be mindful of slurm downtime behavior (section \ref{subsec:slurmdowntime}).
 
 \begin{verbatim}
-scontrol reboot [ASAP] [NodeList]              # comma-separated, slurm 17.11.2
+scontrol reboot [ASAP] [NodeList]                                       # slurm 17.11.2
 scontrol reboot [ASAP] [nextstate=<RESUME|DOWN>] [reason=<reason>] [NodeList]  # newer
 \end{verbatim}
 
-Explanation: \texttt{ASAP} will prevent initiation of new jobs, otherwise the system will wait until it is idle to reboot. Job scheduling is still allowed. Node state will be REBOOT until rebooted or the reboot is cancelled. NOTE: Behavior of \texttt{ASAP} is sometime wonky in slurm 17.11.2.
-
-Newer versions of slurm also include \texttt{nextstate}, which specifies the state of the node after reboot, and \texttt{reason}, shows users the reason the node is unavailable.
+Explanation: \texttt{ASAP} will prevent initiation of new jobs, otherwise the system will wait until it is idle to reboot. Job scheduling is still allowed. The node state will be DRAIN (17.11.2) or REBOOT (newer) until rebooted or the reboot is cancelled. Newer versions of slurm also include \texttt{nextstate}, which specifies the state of the node after reboot, and \texttt{reason}, shows users the reason the node is unavailable.
 
 To cancel a reboot, use one of the following
 
 \begin{verbatim}
-scontrol update NodeName=<nodename> State=RESUME # slurm version 17.11.2
+scontrol update NodeName=<nodename> State=RESUME # slurm 17.11.2
 scontrol cancel_reboot <nodelist>                # more recent versions, e.g. 18.08
 \end{verbatim}
 
@@ -823,9 +821,8 @@ Be mindful of your configured SlurmdTimeout and SlurmctldTimeout values. If the 
 
 \section{Backup and restore database} \label{sec:slurmDBbackup}
 
-\href{https://wiki.fysik.dtu.dk/niflheim/Slurm_database#backup-and-restore-of-database}{(source for the following)}
+In order to backup the entire database to a different location (for disaster recovery or migration), the following files must be backed up. \href{https://wiki.fysik.dtu.dk/niflheim/Slurm_database#backup-and-restore-of-database}{(source)} Make a database mysqldump using this script /root/mysqlbackup (insert the correct root database password for PWD). 
 
-In order to backup the entire database to a different location (for disaster recovery or migration), the following files must be backed up. Make a database mysqldump using this script /root/mysqlbackup (insert the correct root database password for PWD):
 \begin{verbatim}
 #!/bin/sh
 # MySQL Backup Script for All Databases
@@ -862,22 +859,22 @@ If you built your own version of Slurm plugins, they will likely need modificati
 
 The recommended upgrade order is as follows:
 
-        \begin{enumerate}
-        \item Shutdown the slurmdbd daemon
-        \item Dump the Slurm database using \texttt{mysqldump} in case of possible failure
-        \item Increase \texttt{innodb\_buffer\_size} in \texttt{my.cnf} to 128M
-        \item Upgrade the slurmdbd daemon
-        \item Restart the slurmdbd daemon
-        \item Increase SlurmdTimeout and SlurmctldTimeout values and \texttt{scontrol reconfigure} to take effect
-        \item Shutdown the slurmctld daemon(s)
-        \item Shutdown the slurmd daemons on the compute nodes
-        \item Copy the contents of the configured StateSaveLocation directory in case of possible failure
-        \item Upgrade the slurmctld and slurmd daemons
-        \item Restart the slurmd daemons on the compute nodes
-        \item Restart the slurmctld daemon(s)
-        \item Validate proper operation
-        \item Restore original SlurmdTimeout and SlurmctldTimeout, and then \texttt{scontrol reconfigure}
-        \item Destroy backup copies of database and/or state files
-        \end{enumerate}
+    \begin{enumerate}
+    \item Shutdown the slurmdbd daemon
+    \item Dump the Slurm database using \texttt{mysqldump} in case of possible failure
+    \item Increase \texttt{innodb\_buffer\_size} in \texttt{my.cnf} to 128M
+    \item Upgrade the slurmdbd daemon
+    \item Restart the slurmdbd daemon
+    \item Increase SlurmdTimeout and SlurmctldTimeout values and \texttt{scontrol reconfigure} to take effect
+    \item Shutdown the slurmctld daemon(s)
+    \item Shutdown the slurmd daemons on the compute nodes
+    \item Copy the contents of the configured StateSaveLocation directory in case of possible failure
+    \item Upgrade the slurmctld and slurmd daemons
+    \item Restart the slurmd daemons on the compute nodes
+    \item Restart the slurmctld daemon(s)
+    \item Validate proper operation
+    \item Restore original SlurmdTimeout and SlurmctldTimeout, and then \texttt{scontrol reconfigure}
+    \item Destroy backup copies of database and/or state files
+    \end{enumerate}
 
 Note: It is possible to update the slurmd daemons on a node-by-node basis after the slurmctld daemon(s) are upgraded, but make sure their down time is below the SlurmdTimeout value.

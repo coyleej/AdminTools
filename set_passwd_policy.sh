@@ -87,6 +87,15 @@ echo "* Not contain your username"
 
 sudo passwd $USER
 
+# Update password expiry information for existing users
+# (Changes to /etc/login.defs don't affect existing users!)
+userlist==$(grep 10[0-9][0-9] /etc/passwd | grep -v mfe | cut -d ":" -f 1)
+for users in $userlist; do
+	echo $user
+	sudo chage -M 60 $user
+	sudo chage -l $user | grep "Pass.*exp"
+done
+
 if [ $? = 0 ]; then
 	echo "Successfully set new password"
 	echo "Deleting $logindefs.bak and $pwquality.bak"

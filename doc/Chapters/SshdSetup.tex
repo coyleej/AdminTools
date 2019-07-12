@@ -15,10 +15,10 @@ This setup is automated in the \texttt{sshd\_setup.sh} file from \href{https://g
 
 \item Open \href{https://linux.die.net/man/5/sshd_config}{\texttt{/etc/ssh/sshd\_config}} and change some \texttt{ssh} settings.
 
-	The convention in this file is to have default settings commented out. \emph{Only uncomment something if you are changing the value from the default!} Note: We are making an exception to this convention for the values the base has explicitly requested.
+	The convention in this file is to have default settings commented out and to only uncomment something if you change the value! Note: We are making an exception to this convention for values the higher ups have explicitly requested.
 
 	\begin{enumerate}
-	\item Specify that all \texttt{ssh} access to the servers must use protocol 2 by adding the following right below the line \texttt{\#Port 22}.
+	\item Specify that all \texttt{ssh} access to the servers must use protocol 2 by adding the following right below the line \texttt{\#Port 22}. (\href{https://www.openssh.com/txt/release-7.6}{Completely unnecessary for \texttt{openssh 7.6+}}, but including anyway.)
 
 		\texttt{Protocol 2}
 
@@ -67,7 +67,7 @@ This setup is automated in the \texttt{sshd\_setup.sh} file from \href{https://g
 
 		\texttt{Banner /etc/ssh/sshd\_banner}
 
-	\item \texttt{UsePrivilegeSeparation sandbox} \emph{is \href{https://www.openssh.com/txt/release-7.5}{depricated starting with \emph{\texttt{openssh 7.5}}!} We are using \emph{\texttt{openssh 7.6}}.} Privilege separation is now mandatory. Including this line results in a warning when checking the configuration.
+	\item \texttt{UsePrivilegeSeparation sandbox} \emph{is \href{https://www.openssh.com/txt/release-7.5}{depricated starting from \emph{\texttt{openssh 7.5}}!}} Privilege separation is now mandatory. This line results in a warning when checking the configuration.
 
 	\end{enumerate}
 

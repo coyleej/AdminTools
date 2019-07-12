@@ -1,8 +1,6 @@
-Ubuntu is set to automatically download and install security updates, but not security upgrades. The base requires us to automate security upgrades, so we will use the \texttt{unattended-upgrades} package. These changes are automated in the \texttt{set\_unattended\_upgrades.sh} file.
+Ubuntu is set to automatically download and install security updates, but not security upgrades. We will use \texttt{unattended-upgrades} to automate upgrades. I recommend that users automate security upgrades and check for other upgrades manually. Automating everything is fine, but \texttt{apt} occasionally attempts to install or remove other packages. If you do automate everything and encounter dependency issues, refer to section \ref{subsec:brokenpackages}. (Security upgrades are far less likely to cause problems.)
 
-I recommend that users automate security upgrades and check for other upgrades manually. Automating everything is fine, but \texttt{apt} occasionally attempts to install or remove other packages which may cause dependency issues. Security upgrades are far less likely to cause dependency issues. If you do automate everything and happen to run into problems, refer to section \ref{subsec:brokenpackages}.
-
-Automatic upgrades must be set up manually. While there are \href{https://help.ubuntu.com/community/AutomaticSecurityUpdates}{several ways to do this}, we will all use \texttt{unnattended-upgrades}. It comes preinstalled and can be configured in two different ways:
+Automatic upgrades must be set up manually. While there are \href{https://help.ubuntu.com/community/AutomaticSecurityUpdates}{several ways to do this}, we will use \texttt{unnattended-upgrades}. It's preinstalled and can be configured in two different ways. Both are automated in the \texttt{set\_unattended\_upgrades.sh} file:
 
 \begin{itemize}
 \item Run \texttt{sudo dpkg-reconfigure unattended-upgrades} and follow the prompts. The whole process should take about a minute. Automate all upgrades if you want but be aware of the warning above. Detailed documentation can be found \href{https://help.ubuntu.com/lts/serverguide/automatic-updates.html}{here}.
@@ -53,30 +51,30 @@ APT::Periodic::Unattended-Upgrade "1";
 
 \noindent If things ever go wrong, you may need to check the log files: \\
 	\texttt{/var/log/unattended-upgrades/unattended-upgrades.log} \\
-	\texttt{apt} logs: \texttt{/var/log/apt}
+	\texttt{/var/log/apt}
 
 \texttt{unattended-upgrades} runs randomly within a twelve hour block to smooth out demand on the mirrors. This is fine for our purposes and does not need modification.
 
-	\begin{enumerate}
-	\item To view the default values: 
-
-	\texttt{cat /lib/systemd/system/apt-daily.timer}
-	
-	\item If you wish to change the values, do \textbf{NOT} modify the default file. Instead, you should override it. Create a new file:
-
-	\texttt{/etc/systemd/system/apt-daily-upgrade.timer.d/override.conf}
-
-	Add something like the following (run once a day at 6:00, randomized delay of $<$4 hours):
-	\begin{verbatim}
-[Timer]
-OnCalendar=*-*-* 6:00
-RandomizedDelaySec=4h
-	\end{verbatim}
-
-	\item Reload and restart the daemons:
-	\begin{verbatim}
-sudo systemctl daemon-reload && sudo systemctl restart apt-daily.timer
-	\end{verbatim}
-	
-\end{enumerate}
+%	\begin{enumerate}
+%	\item To view the default values: 
+%
+%	\texttt{cat /lib/systemd/system/apt-daily.timer}
+%	
+%	\item If you wish to change the values, do \textbf{NOT} modify the default file. Instead, you should override it. Create a new file:
+%
+%	\texttt{/etc/systemd/system/apt-daily-upgrade.timer.d/override.conf}
+%
+%	Add something like the following (run once a day at 6:00, randomized delay of $<$4 hours):
+%	\begin{verbatim}
+%[Timer]
+%OnCalendar=*-*-* 6:00
+%RandomizedDelaySec=4h
+%	\end{verbatim}
+%
+%	\item Reload and restart the daemons:
+%	\begin{verbatim}
+%sudo systemctl daemon-reload && sudo systemctl restart apt-daily.timer
+%	\end{verbatim}
+%
+%	\end{enumerate}
 
