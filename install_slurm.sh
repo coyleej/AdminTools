@@ -14,7 +14,7 @@
 #       COMPANY:  Azimuth Corporation
 #       VERSION:  1.0
 #       CREATED:  2019-01-28
-#      REVISION:  2019-07-08
+#      REVISION:  2019-07-15
 #
 #===================================================================================
 
@@ -53,8 +53,8 @@ sudo timedatectl set-timezone America/New_York
 timedatectl
 echo ""
 echo "Pausing install to clearly display system clock"
-echo "Installation will continue in 15 seconds..."
-sleep 15
+echo "Installation will continue in 5 seconds..."
+sleep 5
 
 ### Install the things ###
 sudo apt update
@@ -124,7 +124,7 @@ if [ $numGPUs -gt 0 ] && [ $numGPUs -le $maxGPUs ]; then
 	echo "  3 : NVidia Quadro P640  (control node)"
 	echo "  4 : NVidia GTX 1070     (Oryx Pro)"
 	echo "  5 : omit GPU label      (any)"
-	read -p "GPU type? (int) : " typeGPU
+	read -p "GPU type? (integer) : " typeGPU
 
 	if [ $typeGPU == 1 ]; then
 		typeGPU="gtx1080ti"
@@ -222,7 +222,7 @@ if [ $numGPUs != 0 ]; then
 fi
 
 # Setup cgroup.conf
-# got sick of troubleshootin why sed wasn't generating the file
+# got sick of troubleshooting why sed wasn't generating the file
 sudo cp files/cgroup.conf /etc/slurm-llnl/cgroup.conf
 sudo chown root: cgroup.conf
 
@@ -252,11 +252,11 @@ sudo chown $USER: $slurmConf
 # Autofills Oryx Pro values if slurmd -C fails
 node_info=$(slurmd -C | grep NodeName || echo "NodeName="$HOSTNAME" CPUs=12 Boards=1 SocketsPerBoard=1 CoresPerSocket=6 ThreadsPerCore=2 State=UNKNOWN")
 
-#	-e "/^[#]BackupController=/ c\BackupController=${backupname}\\ " \
-#	-e "/^[#]*BackupAddr=/ c\BackupAddr=${backupaddr}\\ " \
 sudo sed -i -e "/ClusterName=/ s/linux/${clustername}/" \
 	-e "/ControlMachine=/ s/linux0/${ctlname}/" \
 	-e "/^[#]*ControlAddr=/ c\ControlAddr=${ctladdr}\\ " \
+	-e "/^[#]BackupController=/ c\BackupController=${backupname}\\ " \
+	-e "/^[#]*BackupAddr=/ c\BackupAddr=${backupaddr}\\ " \
 	-e "/SlurmctldPidFile=/ s/run/run\/slurm-llnl/" \
 	-e "/SlurmdPidFile=/ s/run/run\/slurm-llnl/" \
 	-e "/ProctrackType=/ s/pgid/cgroup/" \
