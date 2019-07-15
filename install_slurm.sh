@@ -222,9 +222,9 @@ if [ $numGPUs != 0 ]; then
 fi
 
 # Setup cgroup.conf
-sudo chown $USER: cgroup.conf.example
-cat "cgroup.conf.example" | sudo sed "s/ConstrainRAMSpace=no/ConstrainRAMSpace=yes/" > cgroup.conf
-sudo chown root: cgroup.conf cgroup.conf.example
+# got sick of troubleshootin why sed wasn't generating the file
+sudo cp files/cgroup.conf /etc/slurm-llnl/cgroup.conf
+sudo chown root: cgroup.conf
 
 # Edit grub settings for cgroup
 grubFile="/etc/default/grub"
