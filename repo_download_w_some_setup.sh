@@ -74,7 +74,7 @@ sudo pip3 install . --target="/opt" --no-deps --no-dependencies
 # Update paths
 envfile=/etc/environment
 grep MANTIS $envfile || sudo sed -i.bak "/^PATH/ s|=\"|=\"/opt/MANTIS:|" $envfile
-grep ^PYTHONPATH $envfile || sudo sed -i.bak "/^PATH/ a\PYTHONPATH=\/opt" $envfile
+grep ^PYTHONPATH $envfile || sudo sed -i.bak "/^PATH/ a\PYTHONPATH=\/\"opt\"" $envfile
 echo ""
 
 ### Signac install ###
@@ -104,7 +104,6 @@ if [ $condaEnv != None ]; then
 	fi
 fi
 
-
 # The unit test will only work after logging in again
 #cd ~/Code/MANTIS/tests
 #python -m unittest
@@ -115,8 +114,8 @@ echo "Please doublecheck that /etc/environment is correct:"
 cat $envfile
 echo ""
 
+echo "NOTE: All required dependencies have been downloaded with apt or git"
 echo "NOTE: Pybind11, OpenBLAS, and S4 have beeen downloaded but not installed"
-echo "NOTE: all required dependencies have been downloaded with apt"
 echo "They must be installed manually."
 echo "MANTIS is useless without these three packages!"
 echo ""

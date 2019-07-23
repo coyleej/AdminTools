@@ -84,17 +84,9 @@ echo "* Contain at least 2 special characters"
 echo "* Not contain more than two of the same character in a row"
 echo "* Contain at least 2 characters not in the previous password"
 echo "* Not contain your username"
+echo ""
 
 sudo passwd $USER
-
-# Update password expiry information for existing users
-# (Changes to /etc/login.defs don't affect existing users!)
-userlist==$(grep 10[0-9][0-9] /etc/passwd | grep -v mfe | cut -d ":" -f 1)
-for users in $userlist; do
-	echo $user
-	sudo chage -M 60 $user
-	sudo chage -l $user | grep "Pass.*exp"
-done
 
 if [ $? = 0 ]; then
 	echo "Successfully set new password"
@@ -104,6 +96,17 @@ else
 	echo "Something went wrong. Please fix the issue, then manually delete"
 	echo "the backup files $logindefs.bak and $pwquality.bak"
 fi
+
+# Update password expiry information for existing users
+# (Changes to /etc/login.defs don't affect existing users!)
+echo ""
+echo "Updating expiry info for existing users"
+userlist==$(grep 10[0-9][0-9] /etc/passwd | grep -v mfe | cut -d ":" -f 1)
+for users in $userlist; do
+	echo $user
+	sudo chage -M 60 $user
+	sudo chage -l $user | grep "Pass.*exp"
+done
 
 # Force HBSS to update the policies
 echo ""

@@ -68,7 +68,7 @@ fi
 
 # The version you currently have
 echo ""
-nvidiaVer==$(dpkg -l | grep "nvidia-driver" | cut -d " " -f 3 | cut -d "-" -f 3)
+nvidiaVer=$(dpkg -l | grep "nvidia-driver" | cut -d " " -f 3 | cut -d "-" -f 3)
 
 # Make sure version nvidia-driver-418 or newer is installed
 if [ ! $nvidiaVer ]; then
@@ -84,7 +84,7 @@ else
 	sudo apt purge nvidia-driver-$nvidiaVer
 	echo ""
 	echo "Installing new NVidia driver"
-	sudo apt install nvidia-driver-418
+	sudo apt install nvidia-driver-430
 fi
 
 # OpenMPI
@@ -271,6 +271,7 @@ sudo sed -i -e "/ClusterName=/ s/linux/${clustername}/" \
 	-e "/FastSchedule=/ a\EnforcePartLimits=YES" \
 	-e "/COMPUTE NODES/ i\# RESOURCES\\
 GresTypes=gpu\\
+LaunchParameters=send_gids\\
 #" \
 	-e "/^NodeName=linux.*Procs.*State.*/ s/NodeName.*/${node_info} Gres=gpu:${numGPUs} State=UNKNOWN/" \
 	-e "/^PartitionName=/ s/ALL Default/ALL OverSubscribe=NO Default/" \

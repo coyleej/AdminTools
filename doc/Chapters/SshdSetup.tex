@@ -1,7 +1,7 @@
 This setup is automated in the \texttt{sshd\_setup.sh} file from \href{https://github.com/coyleej/MiniClusterTools}{MiniClusterTools repository}. 
 
 \begin{enumerate}
-\item Install \texttt{fail2ban} and \texttt{openssh-server} with \texttt{apt}. We'll use the default: ban IP addresses that exceed 5 failed tries in 10 minutes. (Never modify \texttt{/etc/fail2ban/jail.conf}! Copy it into \texttt{jail.local} and modify that.)
+\item Install \texttt{fail2ban} and \texttt{openssh-server} with \texttt{apt}. Use the default: ban IPs that exceed 5 failed tries in 10 minutes. (Never modify \texttt{/etc/fail2ban/jail.conf}! Copy it into \texttt{jail.local} and modify that.)
 
 \item We're required to display \href{https://www.stigviewer.com/stig/firewall/2015-09-18/finding/V-3013}{a banner message (option A)} on the servers prior to login. It will be activated in a few steps. For now, we're just creating it.
 
@@ -78,6 +78,10 @@ This setup is automated in the \texttt{sshd\_setup.sh} file from \href{https://g
 \item Reload the daemon: 
 
 	\texttt{sudo systemctl restart sshd}
+
+\item The code will remind you to manually add users to the \texttt{ssh}-approved group:
+
+	\texttt{sudo usermod -a -G <ssh-users> <username>}
 
 \item Test by logging in again.
 

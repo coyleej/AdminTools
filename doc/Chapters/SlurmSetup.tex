@@ -19,7 +19,7 @@ This guide was constructed from the following references and my own experiences:
 
 \href{https://slurm.schedmd.com/quickstart_admin.html}{Slurm admin quick-start} \\
 \indent \href{https://slurm.schedmd.com/documentation.html}{Slurm official documentation} \\
-\indent \href{slurm-wlm-doc} for Slurm 17.11.2-1build1
+\indent \texttt{man slurm-wlm-doc} for Slurm 17.11.2-1build1 \\
 \indent \href{https://slurm.schedmd.com/man_index.html}{Slurm man pages and configuration file index} \\
 \indent \href{https://slurm.schedmd.com/mc_support.html}{Slurm multi-core support} \\
 \indent \href{https://slurm.schedmd.com/download.html}{Slurm download and addons list} \\
@@ -54,7 +54,7 @@ This guide was constructed from the following references and my own experiences:
 		\texttt{sudo useradd -r -u \$mungeUID -g \$mungeUID munge} \\
 		\texttt{sudo usermod -d /nonexistent munge}
 
-	\item Make sure the system clock is set to the correct timezone and confirm that your system clock is correct:
+	\item Make sure the system clock is set to the proper timezone and that your system clock is correct:
 
 		\texttt{sudo timedatectl set-timezone America/New\_York} \\
 		\texttt{timedatectl}
@@ -198,6 +198,8 @@ This guide was constructed from the following references and my own experiences:
 
 		\item Add a RESOURCES section just above COMPUTE NODES with the following: \texttt{GresTypes=gpu}.
 
+		\item Also under the RESOURCES section, add \texttt{LaunchParameters=send\_gids}. This has \texttt{slurmctld} look up the user name and group ids instead of the individual nodes and prevents the ``couldn't chdir" error. This is the default setting in newer versions of slurm.
+
 		\item In the COMPUTE NODES, add the following to each node containing one or more GPUs. \# is the number of available GPUs on that node: \texttt{Gres=gpu:\#}. Insert this just before \texttt{State=UNKNOWN}.
 
 		\item In the SCHEDULING section, set the default memory per node at 1000 MB. (Slurm's default is ALL, which will not allow multiple jobs simultaneously.) \\
@@ -292,7 +294,7 @@ This guide was constructed from the following references and my own experiences:
 \item \emph{At present the script only handles local setup}. 
 
 	\begin{enumerate}
-	\item \texttt{slurm.conf} -- Nodes and partitions on remote machines must be added manually. The rest of the file will be the same, so all that will be required is copy/pasting the node and partition information between files. You need to add \texttt{NodeAddr=<IP>} to all of the compute nodes. Add this just after \texttt{NodeName=<name>}.
+	\item \texttt{slurm.conf} -- Nodes and partitions on remote machines must be added manually. The rest of the file is the same, so all that will be required is copy/pasting the node and partition information. Add \texttt{NodeAddr=<IP>} just after \texttt{NodeName=<name>} to all of the compute nodes.
 
 	\item \emph{Copy the proper munge key} into \texttt{/etc/munge}, then restart the \texttt{munge} and \texttt{slurmd} daemons.
 	\end{enumerate}
@@ -716,8 +718,6 @@ Do not change the default Slurm plugin location in \texttt{slurm.conf}!
 
 Default location: \texttt{/usr/lib/x86\_64-linux-gnu/slurm-wlm}
 
-\subsection{Node health check}
-
 \section{Slurm admin commands} \label{sec:slurmadmin}
 These are the most common admin-specific commands \emph{in addition to the ones listed in section \ref{sec:queuecommands}}. (Those commands can be run with \texttt{sudo} to affect \emph{any} job.) For details, refer to \texttt{man <command>}.
 
@@ -803,7 +803,7 @@ scontrol reboot [ASAP] [NodeList]                                       # slurm 
 scontrol reboot [ASAP] [nextstate=<RESUME|DOWN>] [reason=<reason>] [NodeList]  # newer
 \end{verbatim}
 
-Explanation: \texttt{ASAP} will prevent initiation of new jobs, otherwise the system will wait until it is idle to reboot. Job scheduling is still allowed. The node state will be DRAIN (17.11.2) or REBOOT (newer) until rebooted or the reboot is cancelled. Newer versions of slurm also include \texttt{nextstate}, which specifies the state of the node after reboot, and \texttt{reason}, shows users the reason the node is unavailable.
+Explanation: \texttt{ASAP} prevents initiation of new jobs. Otherwise the system waits until it is idle to reboot and job scheduling is still allowed. The node state will be DRAIN (17.11.2) or REBOOT (newer) until rebooted or the reboot is cancelled. Newer versions of slurm also include \texttt{nextstate}, which specifies the state of the node after reboot, and \texttt{reason}, which shows users the reason the node is unavailable.
 
 To cancel a reboot, use one of the following
 
@@ -817,7 +817,7 @@ scontrol cancel_reboot <nodelist>                # more recent versions, e.g. 18
 Shut down slurm daemons with \texttt{scontrol shutdown [options]}, and servers with \texttt{sacctmgr shutdown}.
 
 \subsection{Slurm downtime behavior} \label{subsec:slurmdowntime}
-Be mindful of your configured SlurmdTimeout and SlurmctldTimeout values. If the Slurm daemons are down for longer than the specified timeout (currently 5 minutes) during an upgrade, nodes may be marked DOWN and their jobs killed. You can either increase the timeout values during an upgrade or ensure that the slurmd daemons on compute nodes are not down for longer than SlurmdTimeout. 
+Be mindful of your configured SlurmdTimeout and SlurmctldTimeout values. If the Slurm daemons are down for longer than the specified timeout (currently 5 minutes), nodes will be marked DOWN and their jobs killed. Either increase the timeout values during an upgrade or ensure that the compute node slurmd are not down for longer than SlurmdTimeout. 
 
 \section{Backup and restore database} \label{sec:slurmDBbackup}
 
