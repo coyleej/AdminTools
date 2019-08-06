@@ -14,9 +14,12 @@
 #       COMPANY:  Azimuth Corporation
 #       VERSION:  1.0
 #       CREATED:  2019-01-28
-#      REVISION:  2019-07-15
+#      REVISION:  2019-08-06
 #
 #===================================================================================
+
+# Store the MiniClusterTools location
+miniTools=$(pwd)
 
 echo "Installing slurm on node "$HOSTNAME
 
@@ -53,46 +56,48 @@ sudo timedatectl set-timezone America/New_York
 timedatectl
 echo ""
 echo "Pausing install to clearly display system clock"
-echo "Installation will continue in 5 seconds..."
-sleep 5
+echo "Installation will continue in 3 seconds..."
+sleep 3
+echo ""
 
 ### Install the things ###
-sudo apt update
 
 # Checking NVidia drivers, installing from the PPA
-echo ""
 if [ ! -e /etc/apt/trusted.gpg.d/graphics-drivers_ubuntu_ppa.gpg ]; then
+	echo "INSTALLING: graphics-driver PPA"
 	sudo add-apt-repository ppa:graphics-drivers/ppa
-	sudo apt update
+	echo ""
 fi
 
+sudo apt update
+
 # The version you currently have
-echo ""
 nvidiaVer=$(dpkg -l | grep "nvidia-driver" | cut -d " " -f 3 | cut -d "-" -f 3)
 
 # Make sure version nvidia-driver-418 or newer is installed
 if [ ! $nvidiaVer ]; then
 	# No NVidia driver installed
-	echo "Installing new NVidia driver"
-	sudo apt install nvidia-driver-418
+	echo "INSTALLING: NVidia driver 430"
+	echo "You need to reboot to complete this installation"
+	sudo apt install nvidia-driver-430
 
 elif [ $nvidiaVer -ge 418 ]; then 
-	echo "Valid driver installed"
+	echo "Valid NVidia driver installed"
 
 else
-	echo "Purging old NVidia driver"
-	sudo apt purge nvidia-driver-$nvidiaVer
-	echo ""
-	echo "Installing new NVidia driver"
-	sudo apt install nvidia-driver-430
+	echo "WARNING: you have an older NVidia driver!"
+	echo "Upgrading to 430 is highly recommended."
+	sleep 5
 fi
 
 # OpenMPI
 echo ""
+echo "INSTALLING: OpenMPI"
 sudo apt install libopenmpi2 libopenmpi-dev openmpi-common openmpi-doc
 
 # Slurm and MariaDB
 echo ""
+echo "INSTALLING: Munge, slurmd, cgroup, and MariaDB"
 sudo apt install munge libmunge-dev libpam-slurm slurmd slurm-wlm-doc \
 	slurm-wlm-basic-plugins cgroup-tools mariadb-common mariadb-server 
 	#mysql-common mysql-server
@@ -100,12 +105,21 @@ sudo apt install munge libmunge-dev libpam-slurm slurmd slurm-wlm-doc \
 echo ""
 if [ $ctlname == $HOSTNAME ]; then
 	ctlnode="Y"
+	echo "INSTALLING: Slurmctld, slurmdbd"
 	sudo apt install slurmctld slurm-wlm slurmdbd
+	sudo systemctl stop slurmdbd
+	sudo systemctl disable slurmdbd
+
 elif [ $backupname == $HOSTNAME ]; then
 	ctlnode="Y"
+	echo "INSTALLING: Slurmctld, slurmdbd"
 	sudo apt install slurmctld slurm-wlm slurmdbd
+	sudo systemctl stop slurmdbd
+	sudo systemctl disable slurmdbd
+
 else
 	ctlnode="N"
+	echo "INSTALLING: Slurm client"
 	sudo apt install slurm-client
 fi
 
@@ -150,9 +164,9 @@ if [ $ctlnode == "Y" ]; then
 	pidDir=/var/log/slurm-llnl
 	spoolDir=/var/spool/slurmctld
 
-	sudo mkdir $logDir $spoolDir
-	sudo chown slurm: $logDir $spoolDir
-	sudo chmod 755 $logDir $spoolDir
+	sudo mkdir $spoolDir
+	sudo chown slurm: $spoolDir
+	sudo chmod 755 $spoolDir
 
 	logFile=$logDir/slurmctld.log
 	if [ ! -e $logFile ]; then
@@ -223,7 +237,7 @@ fi
 
 # Setup cgroup.conf
 # got sick of troubleshooting why sed wasn't generating the file
-sudo cp files/cgroup.conf /etc/slurm-llnl/cgroup.conf
+sudo cp $miniTools/files/cgroup.conf cgroup.conf
 sudo chown root: cgroup.conf
 
 # Edit grub settings for cgroup
@@ -261,6 +275,7 @@ sudo sed -i -e "/ClusterName=/ s/linux/${clustername}/" \
 	-e "/SlurmdPidFile=/ s/run/run\/slurm-llnl/" \
 	-e "/ProctrackType=/ s/pgid/cgroup/" \
 	-e "/FirstJobId=/ a\RebootProgram=\"\/sbin\/reboot\"" \
+	-e "/^[#]*ReturnToS/ c\ReturnToService=1" \
 	-e "/^[#]*Prop.*R.*L.*Except=/ s/#//" \
 	-e "/Prop.*R.*L.*Except=/ s/=.*/=MEMLOCK/" \
 	-e "/^[#]*TaskPlugin=/ c\TaskPlugin=task\/cgroup\\ " \

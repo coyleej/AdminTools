@@ -26,21 +26,12 @@
 	\vspace{0.5cm}
 	\textbf{Author: Eleanor Coyle}
 
-	\vspace{3cm}
-	\textbf{Important notes} \par
-
-	These scripts were developed to work with the following operating system and shell. If you are using a different operating system or a different version of Ubuntu, you will likely need to make modifications. I tried to maintain POSIX compliance with the shell scripts, but I make no promises. \\
-	
-	\vspace{1cm}
-	\textbf{Operating System} \par
-	Ubuntu 18.04
+	\vfill
+	\textbf{Operating system and shell} \par
+	These scripts were developed to work with \textbf{Ubuntu 18.04} and the \textbf{\texttt{bash}} shell. If you are using a different operating system or a different version of Ubuntu, you will likely need to make modifications. I tried to maintain POSIX compliance with the shell scripts, but I make no promises. \\
 
 	\vspace{1cm}
-	\textbf{Shell} \par
-	\texttt{bash}	
-
-	\vspace{1cm}
-	\textbf{Documentation} \par
+	\textbf{Documentation notes} \par
 	This documentation automatically pulls relevant information from a larger, actively updated document. 
 	As a result, some internal references point to information that is not included. 
 	A few broken links seemed a reasonable compromise to ensure up-to-date documentation.
@@ -83,6 +74,9 @@ Downloads all of the necessary machine learning repos (pybind11, OpenBLAS, S4, M
 
 \section{downtime.py}			\label{sec:downtime}
 Used for monitoring downtime. It is a modified version of script created by waleedahmad. The original version can be found \href{https://gist.github.com/waleedahmad/326ec53f76646dccec299910a7fb4f2b}{on waleedahmad's github page}.
+
+\section{Syncthing}				\label{sec:syncthing}
+	\input{./Chapters/SyncthingUsage.tex}
 
 %\section{kill_old_processes}		\label{sec:kill}
 %Prevents memory leaks caused by \texttt{tmux}.

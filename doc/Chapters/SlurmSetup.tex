@@ -59,7 +59,7 @@ This guide was constructed from the following references and my own experiences:
 		\texttt{sudo timedatectl set-timezone America/New\_York} \\
 		\texttt{timedatectl}
 
-	\item Check that \texttt{nvidia-driver-418} or newer is installed so that slurm can find the GPUs.
+	\item Check that \texttt{nvidia-driver-430} or newer is installed so that slurm can find the GPUs.
 
 		\begin{enumerate}
 		\item Check that we're using the Ubuntu \texttt{graphics-drivers} PPA. If we aren't:
@@ -67,9 +67,9 @@ This guide was constructed from the following references and my own experiences:
 			\texttt{sudo add-apt-repository ppa:graphics-drivers/ppa} \\
 			\texttt{sudo apt update}
 
-		\item Use \texttt{apt} to purge anything older than \texttt{nvidia-driver-418}.
+		\item Use \texttt{apt} to purge anything older than \texttt{nvidia-driver-430}.
 
-		\item Use \texttt{apt} to install \texttt{nvidia-driver-418} if neither it nor a newer version are present.
+		\item Use \texttt{apt} to install \texttt{nvidia-driver-430} if you purged an older driver.
 
 		\end{enumerate}
 
@@ -211,7 +211,10 @@ This guide was constructed from the following references and my own experiences:
 		\texttt{SlurmdPidFile=/var/run/slurm-llnl/slurmd.pid} % # originally in /var/run/
 
 		\item Modify \texttt{slurm.conf} so that the nodes can be rebooted while slurm is running. Change the reboot program to \texttt{RebootProgram="/sbin/reboot"}. 
-		
+
+		\item Change when a DOWN node will be returned to service. The default (\texttt{0}) is that nodes will remain down until the admin manually changes the state. We will change this to \texttt{1}, meaning that the nodes will be restored to service if it is reponding, has a valid configuration, and was not manually set as DOWN. \\
+		\texttt{ReturnToService=1}
+
 		\item Check that \texttt{StateSaveLocation=/var/spool/slurm/ctld}. This directory should already exist, but doublecheck to make sure.
 
 %%%%%%%% RESOURCES SETTINGS %%%%%%%%
@@ -348,8 +351,8 @@ This guide was constructed from the following references and my own experiences:
 %%%%%%%% START SLURM %%%%%%%%
 \item Start slurm. Don't worry about enabling the daemons just yet; that will happen later.
 
-	\texttt{sudo systemctl start slurmctld} \# Control node \\
-	\texttt{sudo systemctl start slurmd} \# Compute nodes 
+	\texttt{sudo systemctl start slurmctld} \quad \# Control node \\
+	\texttt{sudo systemctl start slurmd} \quad \# Compute nodes 
 
 \item Test that the job submission is working. The submission command is \texttt{sbatch <script-name>}. To check the status of the job, type \texttt{squeue}. Output will be written in the same folder as the script. Refer to section \ref{sec:slurmscripts} for an explanation of the SBATCH directives.
 
@@ -395,7 +398,7 @@ A slightly less basic test script (\%x is the job name and \%j is the job number
 
 \item Enable slurm.
 
-	\texttt{sudo systemctl enable slurmctld} \quad \# Control node \\
+	\texttt{sudo systemctl enable slurmctld} \quad \# Control node(s) \\
 	\texttt{sudo systemctl enable slurmd} \quad \# Compute nodes 
 	
 \end{enumerate}
@@ -770,10 +773,10 @@ These are the most common admin-specific commands \emph{in addition to the ones 
 
 \section{Adjusting configuration files} \label{sec:slurmconfig}
 
-When changing configuration files (e.g.\ \texttt{slurm.conf}, \texttt{cgroup.conf}), the change must first be distributed to all compute and login nodes. After copying the new configuration files to all nodes, use \texttt{scontrol reconfigure} on the control node to force all slurm daemons to re-read the configuration file. The slurm controller (\texttt{slurmctld}) forwards the request to all other daemons (e.g.\ \texttt{slurmd}). Depending on the changes, you may also have to restart the slurm daemons. From the \texttt{scontrol} man page about the reconfigure option:
+When changing configuration files (e.g.\ \texttt{slurm.conf}, \texttt{cgroup.conf}), the change must be distributed to all nodes before applying the changes. You may also have to restart the slurm daemons.
 
 \begin{enumerate}
-\item If you modify settings like Epilog, Prolog, SlurmctldLogFile, SlurmdLogFile, etc.), all you need to do is run \texttt{scontrol reconfigure}. Running jobs will continue execution.
+\item If you modify settings like Epilog, Prolog, SlurmctldLogFile, SlurmdLogFile, etc.), all you need to do is run \texttt{scontrol reconfigure} on the control node to force all slurm daemons to re-read the configuration files. The slurm controller (\texttt{slurmctld}) forwards the request to all other daemons (e.g.\ \texttt{slurmd}). Running jobs will continue execution. 
 \item Slurm daemons \emph{must be restarted} if any of these parameters are changed: AccountingStorageEnforce, AuthType, BackupAddr, BackupController, ControlAddr, ControlMach, PluginDir, StateSaveLocation, SlurmctldPort, SlurmdPort.
 \item Slurm daemons \emph{must be restarted} if nodes are added to or removed from the cluster.
 \end{enumerate}

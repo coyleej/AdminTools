@@ -105,7 +105,7 @@ userlist==$(grep 10[0-9][0-9] /etc/passwd | grep -v mfe | cut -d ":" -f 1)
 for users in $userlist; do
 	echo $user
 	sudo chage -M 60 $user
-	sudo chage -l $user | grep "Pass.*exp"
+#	sudo chage -l $user | grep "Pass.*exp"
 done
 
 # Force HBSS to update the policies

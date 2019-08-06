@@ -1,0 +1,37 @@
+\subsection{Summarize syncthing usage} \label{subsec:syncsize}
+
+The \texttt{synthing\_usage.sh} script in the \href{https://github.com/coyleej/MiniClusterTools}{MiniClusterTools repository} reports the size of all directories in the syncthing folder. It reports on all directories but does \emph{not} message users.  
+
+\subsection{Automated messages about syncthing usage} \label{subsec:syncautomessage}
+
+\begin{enumerate}
+\item Navigate to \texttt{/usr/share} on the servers and create a file named \texttt{syncthing-warning}.
+
+\item Place the following text into the file, adding eye-catching ASCII art if desired. The following code is also available in the \href{https://github.com/coyleej/MiniClusterTools}{MiniClusterTools repository} as \texttt{syncthing-warning}.
+	\begin{verbatim}
+	# Size of user folder
+	syncDir=/path/to/syncthing/common/Sync
+	spaceUsed=$(du -sh $syncDir/$USER | sed "s/\t.*//g")
+	magnitude=$(echo $spaceUsed | sed "s/[0-9. ]*[GT]//")
+	if [ ! $magnitude ]; then
+	        echo 'Your syncthing is >1GB'
+	fi
+
+	# Total size of syncthing, including all shared directories
+	syncDir=/home/<admin>/snap/syncthing/common
+	spaceUsed=$(du -sh $syncDir | sed "s/\t.*//g")
+	magnitude=$(echo $spaceUsed | sed -e "s/[0-9. ]*//g" -e "s/[GT]//")
+	spaceUsed=$(echo $spaceUsed | sed -e "s/\.[0-9]*//" -e "s/[.a-zA-Z]//")
+	if [ ! $magnitude ] && [ $spaceUsed -ge 15 ]; then
+	        echo 'Syncthing folder is >15 GB'
+	fi
+	\end{verbatim}
+
+\item Open \texttt{/etc/bash.bashrc} and append the following.
+
+	\begin{verbatim}
+	if [ -f /usr/share/syncthing-warning ]; then
+	        . /usr/share/syncthing-warning
+	fi
+	\end{verbatim}
+\end{enumerate}

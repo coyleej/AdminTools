@@ -1,0 +1,48 @@
+#!/bin/bash
+
+#===================================================================================
+#
+#          FILE:  syncthing-warning
+#
+#   DESCRIPTION:  Automatically alerts users when syncthing folders exceed their 
+#                 allowed size. I recommend adding some eye-catching ASCII art to
+#                 make the message more noticable.
+#
+#                 Place this file in /usr/share, and append the following three
+#                 lines of code to /etc/bash.bashrc:
+#                     if [ -f /usr/share/syncthing-warning ]; then
+#                         . /usr/share/syncthing-warning
+#                     fi
+#
+#       OPTIONS:  ---
+#  REQUIREMENTS:  ---
+#          BUGS:  ---
+#         NOTES:  ---
+#        AUTHOR:  Eleanor Coyle, coyleej@protonmail.com
+#       COMPANY:  Azimuth Corporation
+#       VERSION:  1.0
+#       CREATED:  2019-08-06
+#      REVISION:  2019-08-06
+#
+#===================================================================================
+
+# Check size of user folders
+syncDir=/path/to/syncthing/common/Sync
+if [ $HOSTNAME != $USER ]; then
+	spaceUsed=$(du -sh $syncDir/$USER | sed "s/\t.*//g")
+	magnitude=$(echo $spaceUsed | sed "s/[0-9. ]*[GT]//")
+
+	if [ ! $magnitude ]; then
+		echo 'Your syncthing is >1GB'
+	fi
+fi
+
+# Check total size of syncthing directory, including all shared directories
+syncDir=/path/to/syncthing/common
+spaceUsed=$(du -sh $syncDir | sed "s/\t.*//g")
+magnitude=$(echo $spaceUsed | sed -e "s/[0-9. ]*//g" -e "s/[GT]//")
+spaceUsed=$(echo $spaceUsed | sed -e "s/\.[0-9]*//" -e "s/[.a-zA-Z]//")
+
+if [ ! $magnitude ] && [ $spaceUsed -ge 15 ]; then
+	echo 'Syncthing folder is >15 GB'
+fi
