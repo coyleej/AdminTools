@@ -28,7 +28,7 @@
 
 	\vfill
 	\textbf{Operating system and shell} \par
-	These scripts were developed to work with \textbf{Ubuntu 18.04} and the \textbf{\texttt{bash}} shell. If you are using a different operating system or a different version of Ubuntu, you will likely need to make modifications. I tried to maintain POSIX compliance with the shell scripts, but I make no promises. \\
+	These scripts were developed to work with both the server and desktop versions of \textbf{Ubuntu 18.04} and the \textbf{\texttt{bash}} shell. If you are using a different operating system or a different version of Ubuntu, you will likely need to make modifications. My goal is to maintain POSIX compliance in all of the shell scripts, but I make no promises.
 
 	\vspace{1cm}
 	\textbf{Documentation notes} \par
@@ -41,30 +41,30 @@
 \tableofcontents
 
 %%%%% SETUP %%%%%
-\chapter{Setup Scripts}			\label{ch:setup}
+\chapter{Setup Scripts}				\label{ch:setup}
 
-\section{sshd\_setup}			\label{sec:openssh}
+\section{sshd\_setup.sh}			\label{sec:openssh}
 	\input{./Chapters/SshdSetup.tex}
 
-\section{login\_banner}			\label{sec:login}
+\section{login\_banner.sh}			\label{sec:login}
 	\input{./Chapters/LoginBanner.tex}
 
-\section{unattended\_upgrades}		\label{sec:mandatoryautoupgrades}
+\section{unattended\_upgrades.sh}	\label{sec:mandatoryautoupgrades}
 	\input{./Chapters/UnattendedUpgrades.tex}
 
-\section{set\_password\_policy} 		\label{sec:passwd}
+\section{set\_password\_policy.sh} 	\label{sec:passwd}
 \subsection{Password policy} 		\label{subsec:passwdpolicy}
 	\input{./Chapters/PasswordPolicy.tex}
-\subsection{HBSS}			\label{subsec:HBSS}
+\subsection{HBSS}					\label{subsec:HBSS}
 	\input{./Chapters/HBSS.tex}
 
-\section{auto\_user\_setup}		\label{sec:users}
-This works on test files. It has not been used for actual setup as of now, so I cannot guarantee full functionality.
+\section{auto\_user\_setup.sh}			\label{sec:users}
+REMOVED in latest commit. (This works on test files. It has not been used for actual setup as of now, so I cannot guarantee full functionality.)
 
 %%%%% INSTALLATION %%%%%
-\chapter{Installation scripts}		\label{ch:install}
+\chapter{ML installation scripts}		\label{ch:install}
 
-\section{repo\_download\_w\_some\_install}	\label{sec:repoDL}
+\section{repo\_download\_w\_some\_install.sh}	\label{sec:repoDL}
 Downloads all of the necessary machine learning repos (pybind11, OpenBLAS, S4, MANTIS, and signac) and installs both MANTIS and Signac. Users must compile the other packages themselves.
 
 	\input{./Chapters/MLinstall.tex}
@@ -72,13 +72,32 @@ Downloads all of the necessary machine learning repos (pybind11, OpenBLAS, S4, M
 %%%%% MONITORING %%%%%
 \chapter{Monitoring scripts}		\label{ch:monitor}
 
-\section{downtime.py}			\label{sec:downtime}
+\section{check\_passwd\_expiry.sh}	\label{sec:passwdExp}
+Returns a warning if the user's password expires in 7 or fewer days.
+
+\section{downtime.py}				\label{sec:downtime}
 Used for monitoring downtime. It is a modified version of script created by waleedahmad. The original version can be found \href{https://gist.github.com/waleedahmad/326ec53f76646dccec299910a7fb4f2b}{on waleedahmad's github page}.
 
-\section{Syncthing}				\label{sec:syncthing}
+\section{Syncthing}					\label{sec:syncthing}
 	\input{./Chapters/SyncthingUsage.tex}
 
-%\section{kill_old_processes}		\label{sec:kill}
+%%%%% FILES %%%%%
+\chapter{Files}						\label{ch:files}
+Descriptions of all files in the \texttt{files} directory. Other sections cover the usage of each where relevant.
+
+\section{banner\_text*.txt}	\label{sec:bannerText}
+The long and short versions of the banner text displayed when logging in. Which message is displayed depends on the login method. See sections \ref{sec:openssh} and \ref{sec:login} for details.
+
+\section{cgroup.conf}				\label{sec:cgroup}
+A \texttt{cgroup.conf} example file in case \texttt{install\_slurm.sh} fails to properly make it's own.
+
+\section{s4py.yml}					\label{sec:s4py}
+Used to create the \texttt{s4py} environment in conda. Contains all the packages required to install our ML tools (chapter \ref{ch:install}).
+
+\section{test\_sbatch.sh}			\label{sec:sbatchTest}
+Test if slurm is working properly by submitting a simple job with \texttt{sbatch}. Contains the \texttt{sleep} command to keep it in the queue longer.
+
+%\section{kill\_old\_processes.sh}	\label{sec:kill}
 %Prevents memory leaks caused by \texttt{tmux}.
 
 %%%%% SLURM %%%%%

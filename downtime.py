@@ -3,7 +3,6 @@
 
 """
 Monitors internet connection for downtime. Outputs results in a .csv file
-
 Author: waleedahmad
 Modified by: Eric Harper (harperes)
 Date: 2019-05-29

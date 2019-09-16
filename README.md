@@ -21,7 +21,7 @@ Sets up unattended upgrades.
 
 ### sshd_config.sh 
 
-Configures sshd settings and sets the SSH login banner (servers only).
+Configures sshd settings and sets the SSH login banner.
 
 ## Slurm-related
 
@@ -37,13 +37,17 @@ Modifies slurm.conf and slurmdbd.conf to set up the slurm database. It attempts 
 
 ### auto_user_setup.sh
 
-Automated user setup
+Automated user setup. REMOVED in latest commit, as it was never used and modifying the files directly as it does can be unwise!
 
 ### repo_download_w_some_setup.sh 
 
 Downloads all of our git repos and automatically installs the ones that don't require compiling.
 
 ## Monitoring scripts
+
+### check_passwd_expiry.sh
+
+Standalone code to generate a warning if the user's password will expire in 7 or fewer days. May be incorporated into .bashrc if desired.
 
 ### downtime.py 
 
@@ -67,8 +71,12 @@ HBSS setup script, called by set_passwd_policy.sh
 
 Conda environment setup, required by repo_download_w_some_setup.sh
 
+### test_sbatch.sh
+
+Very simple script to test slurm installation.
+
 ## Documentation (the doc/ directory)
 
-Hopefully self-explanatory. Contains a number of .tex files.
+Hopefully self-explanatory. Contains a PDF and a number of .tex files.
 
-NOTE: this documentation automatically pulls relevant information from a larger, actively updated document. As a result, some of the internal references point to information that is not included. A few broken links seemed a reasonable compromise to ensure that all documentation is up to date.
+NOTE: this documentation automatically pulls relevant information from a larger, actively updated document. As a result, some of the internal references point to information that is not or cannot be included. A few broken links seemed a reasonable compromise to ensure that all documentation is up to date.

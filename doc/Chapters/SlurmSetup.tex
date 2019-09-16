@@ -27,6 +27,35 @@ This guide was constructed from the following references and my own experiences:
 \indent \href{https://wiki.fysik.dtu.dk/niflheim/Slurm_database}{Slurm database (Niflheim)} \\
 \indent \href{https://github.com/dholt/slurm-gpu}{Slurm-gpu github}
 
+\section{Note on hyperthreading} \label{sec:slurmHT}
+
+%Check for hyperthreading on your system with \texttt{lscpu} or \texttt{lscpu | grep "per core"}.
+
+From the \href{https://slurm.schedmd.com/faq.html}{slurm documentation} on hyperthreading:
+	\begin{quotation}
+	If your nodes are configured with hyperthreading, then a CPU is equivalent to a hyperthread. Otherwise a CPU is equivalent to a core. You can determine if your nodes have more than one thread per core using the command ``scontrol show node" and looking at the values of ``ThreadsPerCore".
+
+	Note that even on systems with hyperthreading enabled, the resources will generally be allocated to jobs at the level of a core (see NOTE below). Two different jobs will not share a core except through the use of a partition OverSubscribe configuration parameter. For example, a job requesting resources for three tasks on a node with ThreadsPerCore=2 will be allocated two full cores. Note that Slurm commands contain a multitude of options to control resource allocation with respect to base boards, sockets, cores and threads.
+
+	(NOTE: An exception to this would be if the system administrator configured SelectTypeParameters=CR\_CPU and each node's CPU count without its socket/core/thread specification. In that case, each thread would be independently scheduled as a CPU. This is not a typical configuration.)
+	\end{quotation}
+
+If \texttt{SelectTypeParameters} is set to \texttt{CR\_CPU} or \texttt{CP\_CPU\_Memory}, slurm will treat each thread as a CPU and completely disregard which core a thread is on. If it is set to \texttt{CR\_Core} or \texttt{CR\_Core\_Memory}, slurm can assign multiple threads to a core but will not assign multiple jobs to the same core. If it is set to \texttt{CR\_ONE\_TASK\_PER\_CORE}, slurm assigns one task per core regardless of the number of threads available. 
+
+%You can also disable hyperthreading in the kernel using \texttt{grub}:
+%
+%\begin{enumerate}
+%\item Create a backup copy of \texttt{/etc/default/grub}.
+%
+%\item Open \texttt{/etc/default/grub} and set the maximum number of CPUs the the number of physical cores:
+%
+%	Find the line that begins with \texttt{GRUB\_CMDLINE\_LINUX\_DEFAULT=}. Append \texttt{maxcpus=N} after other options like \texttt{quiet splash}
+%
+%\item Save the file, then run \texttt{sudo update-grub}
+%
+%\item Reboot, then check for hyperthreading with \texttt{lscpu | grep "per core"}.
+%\end{enumerate}
+
 \section{Basic Slurm set up} \label{sec:basicslurm}
 
 \begin{enumerate}
@@ -47,6 +76,8 @@ This guide was constructed from the following references and my own experiences:
 	\texttt{bash install\_slurm.sh}
 
 	\begin{enumerate}
+	\item Set five variables for the cluster name, controller information, and backup controller. If there is no backup controller, leave \texttt{backupname="NULL"}. The script will handle this automatically.
+
 	\item Create Munge user with \texttt{uid} and \texttt{gid} of 399. (Can be any \emph{unused} value between SYS\_UID\_MIN and SYS\_UID\_MAX, which are defined in \texttt{/etc/login.defs}). 
 
 		\texttt{mungeUID=399} \\
@@ -126,12 +157,12 @@ This guide was constructed from the following references and my own experiences:
 			\texttt{touch /var/log/slurmd.log} \\
 			\texttt{chown slurm: /var/log/slurmd.log}
 	
-		\item Create the pid files (only need \texttt{slurmctld.pid} on the control node:
+		\item Create the pid files (only need \texttt{slurmctld.pid} on the control node):
 
 			\texttt{touch /var/log/slurm-llnl/slurmd.pid /var/log/slurm-llnl/slurmctld.pid} \\
 			\texttt{chown slurm: /var/log/slurm-llnl/slurmd.pid /var/log/slurm-llnl/slurmctld.pid}
 
-		\item View the physical configuration (sockets, cores, real memory, etc.) of each of the compute nodes with the command \texttt{slurmd -C}, and update this information in \texttt{slurm.conf} file.
+		\item View the physical configuration (sockets, cores, real memory, etc.) of each of the compute nodes with the command \texttt{slurmd -C}, and update this information in \texttt{slurm.conf}.
 
 		\item Set the \texttt{State} of the node as UNKNOWN (slurm assigns BUSY or IDLE) or FUTURE.
 
@@ -182,16 +213,29 @@ This guide was constructed from the following references and my own experiences:
 	\end{enumerate}
 
 %%%%%%%% SLURM.CONF %%%%%%%%
-	\item Copy \texttt{slurm.conf.example} to \texttt{slurm.conf} and make the following changes (e.g.\ on thanos):
+	\item Copy \texttt{slurm.conf.example} to \texttt{slurm.conf} and change the following. With \texttt{install\_slurm.sh}, the backup controller information is not modified if \texttt{backupname = "NULL"} (the original setting).
 
 		\begin{enumerate}
 		\item \texttt{ClusterName=Marvel}
-		\item \texttt{ControlMachine=magneto}
+
+		\item \texttt{ControlMachine=<name>}
+
+		\item \texttt{ControlAddr=<IP>}
+
+		\item \texttt{BackupController=<name>}
+
+		\item \texttt{BackupAddr=<IP>}
+
 		\item \texttt{ProctrackType=proctrack/cgroup}	
+
 		\item \texttt{TaskPlugin=task/cgroup}
+
 		\item \texttt{InactiveLimit=600}	
+
 		\item \texttt{NodeName=thanos}
+
 		\item \texttt{Nodes=thanos}
+
 		\item \texttt{PartitionName=CEM}
 
 		\item Remove \texttt{Procs=1} and replace it with \texttt{CPUs=128}. (On a multi-core/hyperthreaded system, slurm uses the number of threads as the number of CPUs)
@@ -224,7 +268,7 @@ This guide was constructed from the following references and my own experiences:
 		\texttt{SelectType=select/cons\_res}
 	
 		\item You must also select what is allowed as consumable resources. In \texttt{slurm.conf}, set \\
-		\texttt{SelectTypeParameters=CR\_CPU\_Memory}. 
+		\texttt{SelectTypeParameters=CR\_Core\_Memory}. 
 	
 		NOTE: If you use memory as a consumable resource, you \emph{must} set the \texttt{RealMemory} parameter.
 	
@@ -356,33 +400,24 @@ This guide was constructed from the following references and my own experiences:
 
 \item Test that the job submission is working. The submission command is \texttt{sbatch <script-name>}. To check the status of the job, type \texttt{squeue}. Output will be written in the same folder as the script. Refer to section \ref{sec:slurmscripts} for an explanation of the SBATCH directives.
 
-A very basic test script:
-\begin{verbatim}
-	#!/bin/bash
-	#SBATCH --job-name="testjob"
-	#SBATCH --time=2:00:00
-	echo "running job"
-	sleep 120
-	echo "All done! :)"
-\end{verbatim}
-
-A slightly less basic test script (\%x is the job name and \%j is the job number):
+The following test script is also available in the MiniClusterTools repository as \texttt{files/test\_sbatch.sh}:
 \begin{verbatim}
 	#!/bin/bash
 	#SBATCH --job-name=example
-	#SBATCH --cpus-per-task=1
 	#SBATCH --nodes=1
 	#SBATCH --ntasks-per-node=1
+	#SBATCH --cpus-per-task=1
 	#SBATCH --time=10:00
-	#SBATCH --mem=1000
-	#SBATCH --partition=CEM
+	#SBATCH --mem=10
+	#SBATCH --partition=debug
 	#SBATCH --output=%x.o%j
-
-	python temp.py
+	echo "Hello World!"
 	sleep 120
 \end{verbatim}
 
-\emph{Note: Both of these test scripts contain the \emph{\texttt{sleep}} command specifically to keep the job ``running" for a longer time; it is not necessary for actual jobs.}
+Another script, complete with an explanation of the \texttt{SBATCH} directives, can be found in section \ref{subsec:sbatchscript}.
+
+\emph{Note: Test scripts should contain the \emph{\texttt{sleep}} command to keep the job ``running" for a longer time.}
 
 \item Stop the slurm daemons: 
 
@@ -404,6 +439,155 @@ A slightly less basic test script (\%x is the job name and \%j is the job number
 \end{enumerate}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%\
+
+\section{Sharing StateSaveLocation} \label{sec:shareStateSave}
+
+If you have two controllers (primary and backup), both must have access to the slurm state save folder: \texttt{/var/spool/slurm/ctld}. Because of how our system is set up with NFS and to avoid a single point of failure, some \texttt{rsync} and \texttt{ssh} trickery is required to make both controllers share the state save information.
+
+This particular setup is largely driven by permission-related considerations. Automated tasks cannot use \texttt{sudo}, as \texttt{sudo} is interactive. One way around this is to have \texttt{root} run the process, but \texttt{root} login is disabled on all machines for security reasons. The solution was to have \texttt{root} transfer between the slurm directory and the admin account, and the admin user transfer between servers. I tried getting the slurm user (the actual owner of the state folder) to transfer the data directly, but that approach didn't work.
+
+\begin{enumerate}
+\item You will need the \texttt{copy\_state.sh} and \texttt{transfer\_slurm\_state.sh} files from the MiniClusterTools repo. The following describes exactly what they do. The actual implementation is explained later.
+
+	\begin{itemize}
+	\item \texttt{copy\_state.sh}
+
+		Copies information locally between the slurm state folder and the admin folder.
+
+		\begin{enumerate}
+		\item Checks for the proper input parameters. There must be one or two options specified. The script is called as:
+
+			\texttt{bash /path/to/transfer\_slurm\_state.sh <direction> [sudo]}
+
+		\item Check that the value of \texttt{<direction>} is acceptable. The only accepted inputs for \texttt{<DIRECTION>} are \texttt{to\_admin} and \texttt{to\_root}, which transfer data to the admin account and to the proper slurm-owned state folder, respectively. 
+
+		\item Controls whether the code runs with \texttt{sudo} privileges, which are required if the user is anyone other than \texttt{root}. (Within the script this is accomplished by assigning a shell parameter a string of either \texttt{""} or \texttt{"sudo"}.) Valid input options are \texttt{sudo} and \texttt{with\_sudo}. Assigning any other value is equivalent to leaving this option empty.
+
+		\item Recursively copy (with \texttt{rsync}) and change file permissions/ownership as necessary, depending on the direction of transfer.
+		\end{enumerate}
+
+	\item \texttt{transfer\_slurm\_state.sh}
+
+		Transfers slurm state before issuing the takeover command. Must be made executable to work.
+
+		\begin{enumerate}
+		\item Uses \texttt{copy\_state.sh} to transfer the state files to the admin account.
+
+		\item Copies files to the other controller using \texttt{rsync} and \texttt{ssh} keys.
+
+		\item Uses the remote machine's copy of \texttt{copy\_state.sh} to transfer the state files to the proper directory.
+
+		\item Issues the takeover command, \texttt{sudo scontrol takeover}.
+
+		\item Stops the local control daemon, \texttt{sudo systemctl stop slurmctld}.
+		\end{enumerate}
+
+	\end{itemize}
+
+\item Open \texttt{root}'s crontab on both machines with \texttt{sudo crontab -u root -e}.
+
+	Add the following lines to copy to the other machine once an hour (for now, ultimately more frequently). (Slurm writes the state every 5 seconds.) Note: you must use the admin account for \texttt{rsync}. Running \texttt{rsync} from the root crontab with \texttt{sudo [-i] -u <admin> rsync} will be rejected by the remote servers.
+	\begin{verbatim}
+	0    * * * * bash /home/<local-admin>/Code/MiniClusterTools/copy_state.sh to_admin
+	15   * * * * bash /home/<local-admin>/Code/MiniClusterTools/copy_state.sh to_root
+	\end{verbatim}
+
+\item If \texttt{ssh} keys are already set up, skip to step \ref{list:sshkeys}. Otherwise, make ssh keys on each machine in the admin account. Modify the key name/location if desired, but \emph{you must leave the passphrase empty}. 
+
+	\texttt{ssh-keygen [-f \textasciitilde /.ssh/<custom\_name>]}
+
+\item Copy the keys to the admin account on the other controller, then test the key.
+
+	\texttt{ssh-copy-id <admin>@<remote>} \\
+	\texttt{ssh -i \textasciitilde /.ssh/<local\_id\_rsa> <admin>@<remote>}
+
+\item Test that \texttt{rsync} works over \texttt{ssh} in the admin account.
+
+	\texttt{rsync -a -e "ssh -i \textasciitilde /.ssh/<local\_id\_rsa>" "<randomfile>" "<admin>@<remote>:\textasciitilde /"}
+
+\item \label{list:sshkeys} Modify the admin crontab on each machine to copy to the remote machine once an hour.
+
+	\begin{verbatim}
+	20 * * * *  rsync -au --fake-super -e "ssh -i ~/.ssh/<local_key>" \
+	       "/home/<local-admin>/slurm_state" "<admin>@<remoteIP>:/home/<admin>/"
+	\end{verbatim}
+
+\item There are a couple ways to confirm that it worked. Wait until after the cron job should have run, then do one of the following:
+	\begin{itemize}
+	\item Check \texttt{/var/log/syslog}
+	\item Check the log mailed by \texttt{rsync}
+	\item Check the timestamps in the backup controller's slurm state folder
+	\end{itemize}
+
+\item Each node needs to copy the state files from the other system \emph{before} starting slurm. I could make this into a daemon that is required before \texttt{slurmctld} can start, but I'm going with the following for now. 
+
+	\textbf{NOTE:} When you test the following, do it on the backup controller! Otherwise you risk killing all jobs should some part of code not work properly.
+
+	\textbf{NOTE: I've confirmed that this script works on the backup controller but have yet to properly test takeover on the controllers!}
+
+	\begin{enumerate}
+	\item Open the \texttt{\textasciitilde /.bashrc} file on the admin account.
+
+		Append the following text:
+		\begin{verbatim}
+		# Slurmctld start if daemon is not running
+		if (! systemctl status slurmctld | grep "[Aa]ctive.*[Rr]unning" > /dev/null); then
+		    deltat=$(( $(date "+%s") - $(date "+%s" -r /var/spool/slurm/ctld/job_state) ))
+
+		    if (test $deltat -ge 30); then
+		        echo "Retrieving updated slurm state"
+		        rsync -au --fake-super -e "ssh -i ~/.ssh/id_rsa_magneto" \
+		    "/home/magneto/slurm_state" "nebula@134.166.132.53:/home/nebula/"
+
+		        echo "Copying files to proper directory"
+		        bash ~/Code/MiniClusterTools/copy_state.sh to_root with_sudo
+		    else
+		        echo "WARNING: Slurmctld not running for unknown reasons!"
+		    fi
+
+		    echo "Starting slurmctld..."
+		    sudo systemctl start slurmctld
+		fi
+		\end{verbatim}
+
+	\item On the backup controller, stop \texttt{slurmctld} for testing purposes.
+
+	\item Source \texttt{\textasciitilde /.bashrc}.	
+
+		If you see \texttt{Starting slurmctld...} and no error messages, then the script works properly. Confirm that the daemon is running with \texttt{systemctl status slurmctld}.
+
+	\item Disable \texttt{slurmctld}. Now the daemon will only start when the admin logs in for the first time, but the slurm state will always be up to date when the system resumes.
+	\end{enumerate}
+
+%%	%Create a daemon specifically to run \texttt{rsync} as the admin. Place this daemon somewhere in \texttt{/etc/systemd/system}. Make sure that \texttt{User=} and \texttt{Group=} are set to the admin account in the \texttt{[Service]} section of the daemon.
+%%%
+%%%	Open the \texttt{slurmctld} daemon:
+%%%
+%%%	\texttt{sudo vi /etc/systemd/system/multi-user.target.wants/slurmctld}
+%%%
+%%%	Only allow \texttt{slurmctld} to run after the admin \texttt{rsync} daemon has finished by editing the \texttt{slurmctld} daemon's \texttt{After=} line.
+%%%
+%%%	Add \texttt{ExecStartPre} statements in order to \texttt{rsync} as \texttt{root}. Note: this may not work because \texttt{ExecStartPre} runs as \texttt{root}.
+%%%
+%%%	May have to create a daemon specifically to run \texttt{rsync} as the admin. Place this daemon somewhere in \texttt{/etc/systemd/system}. Make sure that \texttt{User=} and \texttt{Group=} are set to the admin account in the \texttt{[Service]} section of the daemon.
+
+\item To ensure seamless takeover, we will force the state transfer immediately prior to transferring control.
+
+Open the admin's \texttt{.bash\_aliases} on both controllers and alias a command that transfers the slurm state immediately prior to issuing the takeover command.
+
+	\begin{enumerate}
+	\item If you downloaded MiniClusterTools, you should have a file called \texttt{transfer\_slurm\_state.sh}. If it isn't already an executable, turn it into one with
+
+		\texttt{sudo chmod +x transfer\_slurm\_state.sh}
+
+	\item In the admin account, alias the following in \texttt{.bash\_aliases} (preferred) or \texttt{.bashrc}, then source \texttt{.bashrc}.
+
+		\texttt{alias state\_takeover='/<path>/<to>/MiniClusterTools/transfer\_slurm\_state.sh'}
+		
+	\end{enumerate}
+
+\item Consider switching from \texttt{cron} to the \texttt{systemd} timers to run more frequently.
+\end{enumerate}
 
 \section{Database setup} \label{sec:slurmDB}
 
@@ -715,11 +899,35 @@ Accounting records are maintained based on ``associations" consisting of four el
 %
 %\end{enumerate}
 
+\section{Adjusting configuration files} \label{sec:slurmconfig}
+
+When changing configuration files (e.g.\ \texttt{slurm.conf}, \texttt{cgroup.conf}), the change must be distributed to all nodes before applying the changes. You may also have to restart the slurm daemons.
+
+\begin{enumerate}
+\item If you modify settings like Epilog, Prolog, SlurmctldLogFile, SlurmdLogFile, etc.), all you need to do is run \texttt{scontrol reconfigure} on the control node to force all slurm daemons to re-read the configuration files. The slurm controller (\texttt{slurmctld}) forwards the request to all other daemons (e.g.\ \texttt{slurmd}). Running jobs will continue execution. 
+\item Slurm daemons \emph{must be restarted} if any of these parameters are changed: AccountingStorageEnforce, AuthType, BackupAddr, BackupController, ControlAddr, ControlMach, PluginDir, StateSaveLocation, SlurmctldPort, SlurmdPort.
+\item Slurm daemons \emph{must be restarted} if nodes are added to or removed from the cluster.
+\end{enumerate}
+
+\texttt{ControlMachine} and \texttt{ControlAddr} are defunct in newer versions; use \texttt{SlurmctldHost} instead.
+
+\subsection{Adding/removing nodes} \label{subsec:addnodes}
+
+When adding/removing nodes, do the following:
+\begin{enumerate}
+\item Stop \texttt{slurmctld}
+\item Add/remove nodes in \texttt{slurm.conf}
+\item Restart \texttt{slurmd} on all nodes
+\item Start \texttt{slurmctld}
+\end{enumerate}
+
+\noindent It is also possible to add nodes to \texttt{slurm.conf} with \texttt{state=FUTURE}. The nodes will not be seen by slurm commands in this state. Make them available by changing their state in the \texttt{slurm.conf} file and update the node state using \texttt{scontrol} rather than restarting the \texttt{slurmctld} daemon.
+
 \section{Slurm plugins} \label{sec:slurmplugins}
 
 Do not change the default Slurm plugin location in \texttt{slurm.conf}!
 
-Default location: \texttt{/usr/lib/x86\_64-linux-gnu/slurm-wlm}
+Default: \texttt{/usr/lib/x86\_64-linux-gnu/slurm-wlm}
 
 \section{Slurm admin commands} \label{sec:slurmadmin}
 These are the most common admin-specific commands \emph{in addition to the ones listed in section \ref{sec:queuecommands}}. (Those commands can be run with \texttt{sudo} to affect \emph{any} job.) For details, refer to \texttt{man <command>}.
@@ -728,6 +936,7 @@ These are the most common admin-specific commands \emph{in addition to the ones 
 \item Setup and rebooting commands \\
 \addcontentsline{lot}{table}{Slurm setup and management}
 \begin{tabular}{l p{3.4in}}
+\texttt{scontrol takedown} & Orders switch to backup controller \\
 \texttt{scontrol reboot [ASAP] [Nodelist]} & Reboots nodes, see documentation \\
 \texttt{scontrol shutdown} & Shuts down the slurm daemons \\
 \texttt{sacctmgr shutdown} & Shuts down the cluster \\
@@ -771,37 +980,18 @@ These are the most common admin-specific commands \emph{in addition to the ones 
 
 \end{itemize}
 
-\section{Adjusting configuration files} \label{sec:slurmconfig}
-
-When changing configuration files (e.g.\ \texttt{slurm.conf}, \texttt{cgroup.conf}), the change must be distributed to all nodes before applying the changes. You may also have to restart the slurm daemons.
-
-\begin{enumerate}
-\item If you modify settings like Epilog, Prolog, SlurmctldLogFile, SlurmdLogFile, etc.), all you need to do is run \texttt{scontrol reconfigure} on the control node to force all slurm daemons to re-read the configuration files. The slurm controller (\texttt{slurmctld}) forwards the request to all other daemons (e.g.\ \texttt{slurmd}). Running jobs will continue execution. 
-\item Slurm daemons \emph{must be restarted} if any of these parameters are changed: AccountingStorageEnforce, AuthType, BackupAddr, BackupController, ControlAddr, ControlMach, PluginDir, StateSaveLocation, SlurmctldPort, SlurmdPort.
-\item Slurm daemons \emph{must be restarted} if nodes are added to or removed from the cluster.
-\end{enumerate}
-
-\texttt{ControlMachine} and \texttt{ControlAddr} are defunct in newer versions; use \texttt{SlurmctldHost} instead.
-
-\subsection{Adding/removing nodes} \label{subsec:addnodes}
-
-When adding/removing nodes, do the following:
-\begin{enumerate}
-\item Stop \texttt{slurmctld}
-\item Add/remove nodes in \texttt{slurm.conf}
-\item Restart \texttt{slurmd} on all nodes
-\item Start \texttt{slurmctld}
-\end{enumerate}
-
-\noindent It is also possible to add nodes to \texttt{slurm.conf} with \texttt{state=FUTURE}. The nodes will not be seen by slurm commands in this state. Make them available by changing their state in the \texttt{slurm.conf} file and update the node state using \texttt{scontrol} rather than restarting the \texttt{slurmctld} daemon.
-
 \section{Reboot and shutdown nodes} \label{sec:slurmpowercycle}
 
 \subsection{Reboot} \label{subsec:slurmreboot}
 
-Nodes may need to be rebooted after firmware or kernel upgrades. Reboot them as they become idle using the \texttt{RebootProgram} as configured in \texttt{slurm.conf}. Be mindful of slurm downtime behavior (section \ref{subsec:slurmdowntime}).
+Nodes may need to be rebooted after firmware or kernel upgrades. Use the \texttt{RebootProgram} in \texttt{slurm.conf} to reboot nodes as they become idle. Be mindful of slurm downtime behavior (section \ref{subsec:slurmdowntime}).
+
+If you are rebooting the primary controller, the switch should be automatic, but you can also instruct the backup controller to take over. The backup controller requests control from the primary and wait for its termination, then switches to controller mode if primary controller cannot be contacted. This speeds up the slurm controller fail-over mechanism and minimizes disruption when the primary control node is down. Note: the primary controller will take the control back at startup. To reboot nodes
 
 \begin{verbatim}
+# Force switch to the backup controller (primary controller only)
+scontrol takeover
+# All nodes
 scontrol reboot [ASAP] [NodeList]                                       # slurm 17.11.2
 scontrol reboot [ASAP] [nextstate=<RESUME|DOWN>] [reason=<reason>] [NodeList]  # newer
 \end{verbatim}
@@ -811,8 +1001,8 @@ Explanation: \texttt{ASAP} prevents initiation of new jobs. Otherwise the system
 To cancel a reboot, use one of the following
 
 \begin{verbatim}
-scontrol update NodeName=<nodename> State=RESUME # slurm 17.11.2
-scontrol cancel_reboot <nodelist>                # more recent versions, e.g. 18.08
+scontrol update NodeName=<nodename> State=RESUME   # slurm 17.11.2
+scontrol cancel_reboot <nodelist>                  # newer versions, e.g. 18.08
 \end{verbatim}
 
 \subsection{Shutdown} \label{subsec:slurmshutdown}

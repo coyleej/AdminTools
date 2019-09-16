@@ -1,7 +1,7 @@
 This setup is automated in the \texttt{sshd\_setup.sh} file from \href{https://github.com/coyleej/MiniClusterTools}{MiniClusterTools repository}. 
 
 \begin{enumerate}
-\item Install \texttt{fail2ban} and \texttt{openssh-server} with \texttt{apt}. Use the default: ban IPs that exceed 5 failed tries in 10 minutes. (Never modify \texttt{/etc/fail2ban/jail.conf}! Copy it into \texttt{jail.local} and modify that.)
+\item Install \texttt{fail2ban} and \texttt{openssh-server} with \texttt{apt}. \texttt{fail2ban} will ban IPs that exceed 5 failed tries in 10 minutes. (Never modify \texttt{/etc/fail2ban/jail.conf}! Copy it into \texttt{jail.local} and modify that.)
 
 \item We're required to display \href{https://www.stigviewer.com/stig/firewall/2015-09-18/finding/V-3013}{a banner message (option A)} on the servers prior to login. It will be activated in a few steps. For now, we're just creating it.
 
@@ -10,7 +10,7 @@ This setup is automated in the \texttt{sshd\_setup.sh} file from \href{https://g
 
 			\texttt{sudo touch /etc/ssh/sshd\_banner}
 
-		\item Add the warning (\href{https://www.stigviewer.com/stig/firewall/2015-09-18/finding/V-3013}{found here}). 
+		\item Add the warning found in the \href{https://github.com/coyleej/MiniClusterTools/tree/master/files}{MiniClusterTools repo}. 
 	\end{enumerate}
 
 \item Open \href{https://linux.die.net/man/5/sshd_config}{\texttt{/etc/ssh/sshd\_config}} and change some \texttt{ssh} settings.
@@ -67,7 +67,7 @@ This setup is automated in the \texttt{sshd\_setup.sh} file from \href{https://g
 
 		\texttt{Banner /etc/ssh/sshd\_banner}
 
-	\item \texttt{UsePrivilegeSeparation sandbox} \emph{is \href{https://www.openssh.com/txt/release-7.5}{depricated starting from \emph{\texttt{openssh 7.5}}!}} Privilege separation is now mandatory. This line results in a warning when checking the configuration.
+	\item \texttt{UsePrivilegeSeparation sandbox} \emph{is \href{https://www.openssh.com/txt/release-7.5}{depricated starting from \emph{\texttt{openssh 7.5}}!}} Privilege separation is now mandatory. Because it is depricated and results in a warning when checking the configuration, we are not adding this line to the config file.
 
 	\end{enumerate}
 

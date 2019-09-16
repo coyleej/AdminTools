@@ -14,20 +14,20 @@
 #       COMPANY:  Azimuth Corporation
 #       VERSION:  1.0
 #       CREATED:  2019-01-28
-#      REVISION:  2019-08-06
+#      REVISION:  2019-09-11
 #
 #===================================================================================
+
+clustername="Marvel"
+ctlname="magneto"
+ctladdr="XXX.XXX.XXX.XX"
+backupname="NULL"
+backupaddr="XXX.XXX.XXX.XX"
 
 # Store the MiniClusterTools location
 miniTools=$(pwd)
 
 echo "Installing slurm on node "$HOSTNAME
-
-clustername="Marvel"
-ctlname="magneto"
-ctladdr="XXX.XXX.XXX.XX"
-backupname="nebula"
-backupaddr="XXX.XXX.XXX.XX"
 
 ### Create munge user ###
 mungeUID=399
@@ -269,8 +269,6 @@ node_info=$(slurmd -C | grep NodeName || echo "NodeName="$HOSTNAME" CPUs=12 Boar
 sudo sed -i -e "/ClusterName=/ s/linux/${clustername}/" \
 	-e "/ControlMachine=/ s/linux0/${ctlname}/" \
 	-e "/^[#]*ControlAddr=/ c\ControlAddr=${ctladdr}\\ " \
-	-e "/^[#]BackupController=/ c\BackupController=${backupname}\\ " \
-	-e "/^[#]*BackupAddr=/ c\BackupAddr=${backupaddr}\\ " \
 	-e "/SlurmctldPidFile=/ s/run/run\/slurm-llnl/" \
 	-e "/SlurmdPidFile=/ s/run/run\/slurm-llnl/" \
 	-e "/ProctrackType=/ s/pgid/cgroup/" \
@@ -282,7 +280,7 @@ sudo sed -i -e "/ClusterName=/ s/linux/${clustername}/" \
 	-e "/InactiveLimit=/ s/=.*/=600/" \
 	-e "/SchedulerType=/ a\DefMemPerNode=1000" \
 	-e "/^[#]SelectType=/ c\SelectType=select/cons_res\\ " \
-	-e "/SchedulerAuth=/ a\SelectTypeParameters=CR_CPU_Memory" \
+	-e "/SchedulerAuth=/ a\SelectTypeParameters=CR_Core_Memory" \
 	-e "/FastSchedule=/ a\EnforcePartLimits=YES" \
 	-e "/COMPUTE NODES/ i\# RESOURCES\\
 GresTypes=gpu\\
@@ -291,6 +289,16 @@ LaunchParameters=send_gids\\
 	-e "/^NodeName=linux.*Procs.*State.*/ s/NodeName.*/${node_info} Gres=gpu:${numGPUs} State=UNKNOWN/" \
 	-e "/^PartitionName=/ s/ALL Default/ALL OverSubscribe=NO Default/" \
 	$slurmConf
+
+# Moved to an if statement to handle automatically
+#	-e "/^[#]BackupController=/ c\BackupController=${backupname}\\ " \
+#	-e "/^[#]*BackupAddr=/ c\BackupAddr=${backupaddr}\\ " \
+
+if [ $backupname == $HOSTNAME ]; then
+	sudo sed -i -e "/^[#]BackupController=/ c\BackupController=${backupname}\\ " \
+		-e "/^[#]*BackupAddr=/ c\BackupAddr=${backupaddr}\\ " \
+		$slurmConf
+fi
 
 sudo chown root: $slurmConf
 
