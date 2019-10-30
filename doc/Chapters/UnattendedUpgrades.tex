@@ -1,6 +1,6 @@
-Ubuntu is set to automatically download and install security updates, but not security upgrades. We will use \texttt{unattended-upgrades} to automate upgrades. I recommend that users automate security upgrades and check for other upgrades manually. Automating everything is fine, but \texttt{apt} occasionally attempts to install or remove other packages. If you do automate everything and encounter dependency issues, refer to section \ref{subsec:brokenpackages}. (Security upgrades are far less likely to cause problems.)
+Ubuntu by default will automatically download and install security updates but not security upgrades. We will use \texttt{unattended-upgrades} to automate the latter. I recommend automating security upgrades and checking for other upgrades manually. \texttt{apt} may attempt to install or remove other packages, which can cause dependency issues (section \ref{subsec:brokenpackages}). Security upgrades are less likely to cause problems.
 
-Automatic upgrades must be set up manually. While there are \href{https://help.ubuntu.com/community/AutomaticSecurityUpdates}{several ways to do this}, we will use \texttt{unnattended-upgrades}. It's preinstalled and can be configured in two different ways. Both are automated in the \texttt{set\_unattended\_upgrades.sh} file:
+Automatic upgrades must be set up manually. There are \href{https://help.ubuntu.com/community/AutomaticSecurityUpdates}{several ways to do this}, but we will use \texttt{unnattended-upgrades}. It's preinstalled and can be configured in two different ways (both are automated in the \texttt{set\_unattended\_upgrades.sh} file):
 
 \begin{itemize}
 \item Run \texttt{sudo dpkg-reconfigure unattended-upgrades} and follow the prompts. The whole process should take about a minute. Automate all upgrades if you want but be aware of the warning above. Detailed documentation can be found \href{https://help.ubuntu.com/lts/serverguide/automatic-updates.html}{here}.
@@ -13,47 +13,44 @@ Automatic upgrades must be set up manually. While there are \href{https://help.u
 %1: Best step-by-step instructions 
 %2: Good overview
 %3:Ok guide (skip SMTP relay section)
-\end{itemize}
 
-\textbf{Manual setup}:
-
-\begin{enumerate}
-\item Install \texttt{bsd-mailx}. In the installation process, pick ``local only" and use ``\$HOSTNAME" as the mail server host. (Substitute the name of your machine for ``\$HOSTNAME".)
-
-\item Navigate to \texttt{/etc/apt/apt.conf.d/}.
-
-\item Copy \texttt{50unattended-upgrades} to \texttt{50unattended-upgrades.backup}.
-
-Open \texttt{50unattended-upgrades} and make the following changes:
 	\begin{enumerate}
-	\item Uncomment \texttt{Unattended-Upgrade::Mail} and change the address to \texttt{<admin\_account>}. 
+	\item Install \texttt{bsd-mailx}. In the installation process, pick ``local only" and use ``<hostname>" as the mail server host.
 
-	\item Set it to send you mail only when there are errors. (The default is sending mail every time it updates.) Messages are placed in \texttt{/var/mail}. Uncomment the following: \\
-	\texttt{Unattended-Upgrade::MailOnlyOnError "true"}
+	\item Navigate to \texttt{/etc/apt/apt.conf.d/}.
+
+	\item Copy \texttt{50unattended-upgrades} to \texttt{50unattended-upgrades.bak}. Open \texttt{50unattended-upgrades} and change the following:
+		\begin{enumerate}
+		\item Uncomment \texttt{Unattended-Upgrade::Mail} and change the address to \texttt{<admin\_account>}. 
+
+		\item Set it to send you mail only when there are errors. (The default is sending mail every time it updates.) Messages are placed in \texttt{/var/mail}. Uncomment the following: \\
+		\texttt{Unattended-Upgrade::MailOnlyOnError "true"}
 			
-	\item All other items are left as the defaults.
+		\item All other items are left as the defaults.
+		\end{enumerate}
+
+	\item Copy \texttt{20auto-upgrades} to \texttt{20auto-upgrades.bak}. Open \texttt{20auto-upgrades} and make sure that it contains the following (time intervals are in days):
+		\begin{verbatim}
+		APT::Periodic::Update-Package-Lists "1";
+		APT::Periodic::Download-Upgradeable-Packages "1";
+		APT::Periodic::AutocleanInterval "7";
+		APT::Periodic::Unattended-Upgrade "1";
+		\end{verbatim}
+
+	\item Test: \texttt{sudo unattended-upgrades --dry-run --debug}
+
+	\item If the dry run worked: \texttt{sudo rm *.bak}
 	\end{enumerate}
 
-\item Copy \texttt{20auto-upgrades} to \texttt{20auto-upgrades.backup}.
+\end{itemize}
 
-	Open \texttt{20auto-upgrades} and make sure that it contains the following (time intervals are in days):
-	\begin{verbatim}
-APT::Periodic::Update-Package-Lists "1";
-APT::Periodic::Download-Upgradeable-Packages "1";
-APT::Periodic::AutocleanInterval "7";
-APT::Periodic::Unattended-Upgrade "1";
-	\end{verbatim}
+If things ever go wrong, you may need to check the log files:
 
-\item Test: \texttt{sudo unattended-upgrades --dry-run --debug}
-
-\item If the dry run worked: \texttt{sudo rm *.backup}
-\end{enumerate}
-
-\noindent If things ever go wrong, you may need to check the log files: \\
-	\texttt{/var/log/unattended-upgrades/unattended-upgrades.log} \\
+	\texttt{/var/log/unattended-upgrades/unattended-upgrades.log}
+	
 	\texttt{/var/log/apt}
 
-\texttt{unattended-upgrades} runs randomly within a twelve hour block to smooth out demand on the mirrors. This is fine for our purposes and does not need modification.
+By default \texttt{unattended-upgrades} runs randomly within a twelve hour block to smooth out demand on the mirrors. This is fine for our purposes and does not need modification.
 
 %	\begin{enumerate}
 %	\item To view the default values: 

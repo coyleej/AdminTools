@@ -11,7 +11,7 @@
 #  REQUIREMENTS:  ---
 #          BUGS:  ---
 #         NOTES:  ---
-#        AUTHOR:  Eleanor Coyle, coyleej@protonmail.com
+#        AUTHOR:  Eleanor Coyle, ecoyle@azimuth-corp.com
 #       COMPANY:  Azimuth Corporation
 #       VERSION:  1.0
 #       CREATED:  2019-02-13
@@ -32,12 +32,16 @@ pidFile=$pidDir/slurmdbd.pid
 sudo touch $pidFile
 sudo chown slurm: $pidFile
 
+echo "hello"
+
 # Does slurmdbd not need a spool directory?
 
 #### Config files ####
 
-ctlname=$( scontrol show config | grep ControlNode | awk '{print $3}' )
+ctlname=$( scontrol show config | grep ControlMachine | awk '{print $3}' )
 ctladdr=$( scontrol show config | grep ControlAddr | awk '{print $3}' )
+
+echo "hi"
 
 # Edit slurm.conf
 cd /etc/slurm-llnl/
@@ -46,7 +50,9 @@ sudo cp $slurmConf $slurmConf.backup
 
 sudo chown $USER: $slurmConf $slurmConf.backup
 
-sudo sed -e "/#JobAcctGatherType=/ s/#//" \
+echo "howdy"
+
+sudo sed -i -e "/#JobAcctGatherType=/ s/#//" \
 	-e "/#JobAcctGatherFrequency=/ s/#//" \
 	-e "/#AccountingStorageType=/ s/#//" \
         -e "/^[#]*AccountingStorageHost=/ c\AccountingStorageHost=${ctladdr}\\ " \
@@ -55,9 +61,11 @@ sudo sed -e "/#JobAcctGatherType=/ s/#//" \
         -e "/AccountingStoragePass=/ a\AccountingStoragePort=3306" \
         -e "/^[#]AccountingStorageUser=/ c\AccountingStorageUser=slurm\\ " \
         -e "/AccountingStorageUser=/ a\AccountingStoreJobComment=YES\\
-AccountingStorageEnforce=associations\\
-AccountingStorageTRES=gres/gpu,gres/gpu:gtx1080ti" \
-	<$slurmConf.backup >$slurmConf
+AccountingStorageEnforce=associations" \
+	$slurmConf
+#        -e "/AccountingStorageUser=/ a\AccountingStoreJobComment=YES\\
+#AccountingStorageEnforce=associations\\
+#AccountingStorageTRES=gres/gpu,gres/gpu:gtx1080ti" \
 
 sudo chown root: $slurmConf $slurmConf.backup
 
@@ -67,10 +75,11 @@ sudo systemctl restart slurmctld
 
 # Setup slurmdbd.conf
 slurmdbConf="slurmdbd.conf"
+sudo cp $slurmdbConf.example $slurmdbConf
 
-sudo chown $USER: $slurmdbConfdb.example
+sudo chown $USER: $slurmdbConf
 
-sudo sed -e "/DbdAddr=/ s/localhost/${ctladdr}/" \
+sudo sed -i -e "/DbdAddr=/ s/localhost/${ctladdr}/" \
 	-e "/DbdHost=/ s/localhost/${ctlname}/" \
         -e "/DbdHost=/ a\#DbdBackupHost=" \
 	-e "/LogFile=/ s/\/slurm//" \
@@ -79,7 +88,9 @@ sudo sed -e "/DbdAddr=/ s/localhost/${ctladdr}/" \
 	-e "/^[#]Storageport=/ c\Storageport=3306\\ " \
 	-e "/StoragePass=/ s/password/some_pass/" \
 	-e "/#StorageLoc=/ s/#//" \
-	<$slurmdbConf.example >$slurmdbConf
+	$slurmdbConf
+
+echo "yup"
 
 sudo echo "PurgeEventAfter=12months" >> slurmdbd.conf
 sudo echo "PurgeJobAfter=12months" >> slurmdbd.conf
@@ -89,12 +100,13 @@ sudo echo "PurgeSuspendAfter=1month" >> slurmdbd.conf
 sudo echo "PurgeTXNAfter=12months" >> slurmdbd.conf
 sudo echo "PurgeUsageAfter=12months" >> slurmdbd.conf
 
-sudo chown root: $slurmdbConfdb.example
+sudo chown root: $slurmdbConf
 
 sudo scontrol reconfigure
 
 # Edit mariadb config file
 mdbConf=/etc/mysql/my.cnf
+sudo chown $USER: $mdbConf
 
 sudo echo "" >> ${mdbConf}
 sudo echo "[mysqld]" >> ${mdbConf}

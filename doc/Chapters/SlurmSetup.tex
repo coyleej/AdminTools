@@ -1,4 +1,4 @@
-\chapter{Slurm setup and administration} \label{ch:slurmsetup}
+\chapter{Slurm installation and setup} \label{ch:slurmsetup}
 
 \textbf{\emph{This setup works on Ubuntu 18.04 and Ubuntu Server 18.04.}}
 
@@ -440,50 +440,31 @@ Another script, complete with an explanation of the \texttt{SBATCH} directives, 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%\
 
-\section{Sharing StateSaveLocation} \label{sec:shareStateSave}
+\section{Configure the backup controller} \label{sec:backupControllerSetup}
 
 If you have two controllers (primary and backup), both must have access to the slurm state save folder: \texttt{/var/spool/slurm/ctld}. Because of how our system is set up with NFS and to avoid a single point of failure, some \texttt{rsync} and \texttt{ssh} trickery is required to make both controllers share the state save information.
 
-This particular setup is largely driven by permission-related considerations. Automated tasks cannot use \texttt{sudo}, as \texttt{sudo} is interactive. One way around this is to have \texttt{root} run the process, but \texttt{root} login is disabled on all machines for security reasons. The solution was to have \texttt{root} transfer between the slurm directory and the admin account, and the admin user transfer between servers. I tried getting the slurm user (the actual owner of the state folder) to transfer the data directly, but that approach didn't work.
+This particular setup is largely driven by permission-related considerations. Automated tasks cannot use \texttt{sudo}, as \texttt{sudo} is interactive. One way around this is to have \texttt{root} run the process, but \texttt{root} login is disabled on all machines for security reasons. The solution was to have \texttt{root} transfer between the slurm directory and the admin account, and the admin user transfer between servers. I tried getting the slurm user (the actual owner of the state folder) to transfer the data directly, but that didn't work.
+
+\subsection{Sharing StateSaveLocation} \label{subsec:shareStateSave}
+
+You need the \texttt{copy\_state.sh} file from the MiniClusterTools repo to copy information locally between the slurm state folder and the admin folder. What it does:
 
 \begin{enumerate}
-\item You will need the \texttt{copy\_state.sh} and \texttt{transfer\_slurm\_state.sh} files from the MiniClusterTools repo. The following describes exactly what they do. The actual implementation is explained later.
+	\item Checks for the proper input parameters. There must be one or two options specified. The script is called as:
 
-	\begin{itemize}
-	\item \texttt{copy\_state.sh}
+		\texttt{bash /path/to/copy\_state.sh <direction> [sudo]}
 
-		Copies information locally between the slurm state folder and the admin folder.
+	\item Check that the value of \texttt{<direction>} is acceptable. The only accepted inputs for \texttt{<direction>} are \texttt{to\_admin} and \texttt{to\_root}, which transfer data to the admin account and to the proper slurm-owned state folder, respectively. 
 
-		\begin{enumerate}
-		\item Checks for the proper input parameters. There must be one or two options specified. The script is called as:
+	\item Controls whether the code runs with \texttt{sudo} privileges as required if the user calling the script is anyone other than \texttt{root}. Running with \texttt{sudo} privileges is accomplished by assigning to a shell parameter a string of either \texttt{"sudo"} or \texttt{"with\_sudo"}. Assigning any other value (recommend using \texttt{""}) is equivalent to leaving this option empty.
 
-			\texttt{bash /path/to/transfer\_slurm\_state.sh <direction> [sudo]}
+	\item Recursively copy (with \texttt{rsync}) and change file permissions/ownership as necessary, depending on the direction of transfer.
+\end{enumerate}
 
-		\item Check that the value of \texttt{<direction>} is acceptable. The only accepted inputs for \texttt{<DIRECTION>} are \texttt{to\_admin} and \texttt{to\_root}, which transfer data to the admin account and to the proper slurm-owned state folder, respectively. 
+Now set up automatic Slurm state transfer.
 
-		\item Controls whether the code runs with \texttt{sudo} privileges, which are required if the user is anyone other than \texttt{root}. (Within the script this is accomplished by assigning a shell parameter a string of either \texttt{""} or \texttt{"sudo"}.) Valid input options are \texttt{sudo} and \texttt{with\_sudo}. Assigning any other value is equivalent to leaving this option empty.
-
-		\item Recursively copy (with \texttt{rsync}) and change file permissions/ownership as necessary, depending on the direction of transfer.
-		\end{enumerate}
-
-	\item \texttt{transfer\_slurm\_state.sh}
-
-		Transfers slurm state before issuing the takeover command. Must be made executable to work.
-
-		\begin{enumerate}
-		\item Uses \texttt{copy\_state.sh} to transfer the state files to the admin account.
-
-		\item Copies files to the other controller using \texttt{rsync} and \texttt{ssh} keys.
-
-		\item Uses the remote machine's copy of \texttt{copy\_state.sh} to transfer the state files to the proper directory.
-
-		\item Issues the takeover command, \texttt{sudo scontrol takeover}.
-
-		\item Stops the local control daemon, \texttt{sudo systemctl stop slurmctld}.
-		\end{enumerate}
-
-	\end{itemize}
-
+\begin{enumerate}
 \item Open \texttt{root}'s crontab on both machines with \texttt{sudo crontab -u root -e}.
 
 	Add the following lines to copy to the other machine once an hour (for now, ultimately more frequently). (Slurm writes the state every 5 seconds.) Note: you must use the admin account for \texttt{rsync}. Running \texttt{rsync} from the root crontab with \texttt{sudo [-i] -u <admin> rsync} will be rejected by the remote servers.
@@ -519,14 +500,12 @@ This particular setup is largely driven by permission-related considerations. Au
 	\item Check the timestamps in the backup controller's slurm state folder
 	\end{itemize}
 
-\item Each node needs to copy the state files from the other system \emph{before} starting slurm. I could make this into a daemon that is required before \texttt{slurmctld} can start, but I'm going with the following for now. 
+\item Each controller needs to copy the state files from the active controller \emph{before} starting slurm. I've elected to have the local controller grab the files from the remote controller to ensure that it grabs the most recent state. (This may eventually get turned into a daemon that is required before \texttt{slurmctld} can start, but I'm going with the following for now.) 
 
-	\textbf{NOTE:} When you test the following, do it on the backup controller! Otherwise you risk killing all jobs should some part of code not work properly.
-
-	\textbf{NOTE: I've confirmed that this script works on the backup controller but have yet to properly test takeover on the controllers!}
+	\textbf{NOTE:} The following works beautifully on our cluster. When testing on a new cluster, test it on the backup controller! Otherwise you risk killing all jobs should a part of code not work properly.
 
 	\begin{enumerate}
-	\item Open the \texttt{\textasciitilde /.bashrc} file on the admin account.
+	\item Open the \texttt{\textasciitilde /.bashrc} file on the admin account on each controller.
 
 		Append the following text:
 		\begin{verbatim}
@@ -536,8 +515,8 @@ This particular setup is largely driven by permission-related considerations. Au
 
 		    if (test $deltat -ge 30); then
 		        echo "Retrieving updated slurm state"
-		        rsync -au --fake-super -e "ssh -i ~/.ssh/id_rsa_magneto" \
-		    "/home/magneto/slurm_state" "nebula@134.166.132.53:/home/nebula/"
+		        rsync -au --fake-super -e "ssh -i ~/.ssh/id_rsa_<local>" \
+		              "/home/<local>/slurm_state" "<remote>@<IP>:/home/<remote>/"
 
 		        echo "Copying files to proper directory"
 		        bash ~/Code/MiniClusterTools/copy_state.sh to_root with_sudo
@@ -550,524 +529,378 @@ This particular setup is largely driven by permission-related considerations. Au
 		fi
 		\end{verbatim}
 
-	\item On the backup controller, stop \texttt{slurmctld} for testing purposes.
-
-	\item Source \texttt{\textasciitilde /.bashrc}.	
+	\item Test this script on the backup controller. Stop \texttt{slurmctld}, then source \texttt{\textasciitilde /.bashrc}.	
 
 		If you see \texttt{Starting slurmctld...} and no error messages, then the script works properly. Confirm that the daemon is running with \texttt{systemctl status slurmctld}.
 
 	\item Disable \texttt{slurmctld}. Now the daemon will only start when the admin logs in for the first time, but the slurm state will always be up to date when the system resumes.
 	\end{enumerate}
 
-%%	%Create a daemon specifically to run \texttt{rsync} as the admin. Place this daemon somewhere in \texttt{/etc/systemd/system}. Make sure that \texttt{User=} and \texttt{Group=} are set to the admin account in the \texttt{[Service]} section of the daemon.
-%%%
-%%%	Open the \texttt{slurmctld} daemon:
-%%%
-%%%	\texttt{sudo vi /etc/systemd/system/multi-user.target.wants/slurmctld}
-%%%
-%%%	Only allow \texttt{slurmctld} to run after the admin \texttt{rsync} daemon has finished by editing the \texttt{slurmctld} daemon's \texttt{After=} line.
-%%%
-%%%	Add \texttt{ExecStartPre} statements in order to \texttt{rsync} as \texttt{root}. Note: this may not work because \texttt{ExecStartPre} runs as \texttt{root}.
-%%%
-%%%	May have to create a daemon specifically to run \texttt{rsync} as the admin. Place this daemon somewhere in \texttt{/etc/systemd/system}. Make sure that \texttt{User=} and \texttt{Group=} are set to the admin account in the \texttt{[Service]} section of the daemon.
-
-\item To ensure seamless takeover, we will force the state transfer immediately prior to transferring control.
-
-Open the admin's \texttt{.bash\_aliases} on both controllers and alias a command that transfers the slurm state immediately prior to issuing the takeover command.
-
-	\begin{enumerate}
-	\item If you downloaded MiniClusterTools, you should have a file called \texttt{transfer\_slurm\_state.sh}. If it isn't already an executable, turn it into one with
-
-		\texttt{sudo chmod +x transfer\_slurm\_state.sh}
-
-	\item In the admin account, alias the following in \texttt{.bash\_aliases} (preferred) or \texttt{.bashrc}, then source \texttt{.bashrc}.
-
-		\texttt{alias state\_takeover='/<path>/<to>/MiniClusterTools/transfer\_slurm\_state.sh'}
-		
-	\end{enumerate}
+%	%Create a daemon specifically to run \texttt{rsync} as the admin. Place this daemon somewhere in \texttt{/etc/systemd/system}. Make sure that \texttt{User=} and \texttt{Group=} are set to the admin account in the \texttt{[Service]} section of the daemon.
+%%
+%%	Open the \texttt{slurmctld} daemon:
+%%
+%%	\texttt{sudo vi /etc/systemd/system/multi-user.target.wants/slurmctld}
+%%
+%%	Only allow \texttt{slurmctld} to run after the admin \texttt{rsync} daemon has finished by editing the \texttt{slurmctld} daemon's \texttt{After=} line.
+%%
+%%	Add \texttt{ExecStartPre} statements in order to \texttt{rsync} as \texttt{root}. Note: this may not work because \texttt{ExecStartPre} runs as \texttt{root}.
+%%
+%%	May have to create a daemon specifically to run \texttt{rsync} as the admin. Place this daemon somewhere in \texttt{/etc/systemd/system}. Make sure that \texttt{User=} and \texttt{Group=} are set to the admin account in the \texttt{[Service]} section of the daemon.
 
 \item Consider switching from \texttt{cron} to the \texttt{systemd} timers to run more frequently.
 \end{enumerate}
+
+\subsection{Set up backup controller takeover} \label{subsec:SetupBackupTakeover}
+
+You must set up the state transfer (section \ref{subsec:shareStateSave}) before attempting this section.
+
+You will need the \texttt{transfer\_slurm\_control.sh} file from the MiniClusterTools repo. What it does:
+
+\begin{enumerate}
+	\item Uses \texttt{copy\_state.sh} to transfer the state files to the admin account.
+
+	\item Copies files to the other controller using \texttt{rsync} and \texttt{ssh} keys.
+
+	\item Uses the remote machine's version of \texttt{copy\_state.sh} to transfer the state files to the proper directory.
+
+	\item Issues the takeover command, \texttt{sudo scontrol takeover}.
+
+	\item Stops the local control daemon, \texttt{sudo systemctl stop slurmctld}.
+\end{enumerate}
+
+\noindent Set up the state transfer and takeover command:
+
+\begin{enumerate}
+\item If \texttt{transfer\_slurm\_control.sh} isn't already an executable, make it executable:
+
+	\texttt{sudo chmod +x transfer\_slurm\_state.sh}
+
+\item (Optional) Open the admin's \texttt{.bash\_aliases} (preferred) or \texttt{.bashrc} on both controllers and alias a command that transfers the slurm state immediately prior to issuing the takeover command, then source \texttt{.bashrc}.
+
+	\texttt{alias state\_takeover='/<path>/<to>/MiniClusterTools/transfer\_slurm\_state.sh'}
+\end{enumerate}
+
 
 \section{Database setup} \label{sec:slurmDB}
 
 \begin{enumerate}
 
-\item If you followed the basic slurm install instructions in section \ref{sec:basicslurm}, you should have downloaded the MiniClusterTools git repo. If not, do it now.
+  \item If you followed the basic slurm install instructions in section \ref{sec:basicslurm}, you should have downloaded the MiniClusterTools git repo. If not, do it now.
 
-\texttt{git clone https://github.com/coyleej/MiniClusterTools.git}
+    \texttt{git clone https://github.com/coyleej/MiniClusterTools.git}
 
-\item Run \texttt{slurmdb\_initial\_setup.sh}. It automates much of the setup:
+  \item Run \texttt{slurmdb\_initial\_setup.sh}. It automates much of the setup:
 
-	\texttt{bash slurmdb\_initial\_setup.sh}
+    \texttt{bash slurmdb\_initial\_setup.sh}
 
-	Here's what the script does, with some explanation:
+    Here's what the script does, with some explanation:
 
 %%%%%%%% v NEW v %%%%%%%%
-	\begin{enumerate}
-	\item Create the log file: \\
-	\texttt{touch /var/log/slurmdbd.log} \\
-	\texttt{chown slurm: /var/log/slurmdbd.log}
+    \begin{enumerate}
+      \item Create the log file: \\
+        \texttt{touch /var/log/slurmdbd.log} \\
+        \texttt{chown slurm: /var/log/slurmdbd.log}
 
-	\item Create the pid file: \\
-	\texttt{touch /var/run/slurm-llnl/slurmdbd.pid} \\
-	\texttt{chown slurm: /var/run/slurm-llnl/slurmdbd.pid}
+      \item Create the pid file: \\
+        \texttt{touch /var/run/slurm-llnl/slurmdbd.pid} \\
+        \texttt{chown slurm: /var/run/slurm-llnl/slurmdbd.pid}
 
-	\item In \texttt{slurm.conf}, make the following changes:
+      \item In \texttt{slurm.conf}, make the following changes:
 
-		\begin{enumerate}
-		\item Uncomment: \\
-		\texttt{JobAcctGatherType=jobacct\_gather/linux} \\
-		\texttt{JobAcctGatherFrequency=30} \\
-		\texttt{AccountingStorageType=accounting\_storage/slurmdbd}
+        \begin{enumerate}
+          \item Uncomment: \\
+          \texttt{JobAcctGatherType=jobacct\_gather/linux} \\
+          \texttt{JobAcctGatherFrequency=30} \\
+          \texttt{AccountingStorageType=accounting\_storage/slurmdbd}
 
-		\item Modify: \\
-%		\texttt{AccountingStorageLoc=slurm\_acct\_db} \\
-%		\texttt{AccountingStoragePass} \\
-		\texttt{AccountingStorageHost=<IP or domain name>} \\
-		\texttt{AccountingStorageLoc=/var/lib/mysql} \\
-		\texttt{AccountingStoragePass=/var/run/munge/munge.socket.2}   \quad \# munge daemon port \\
-		\texttt{AccountingStoragePort=3306} \\
-		\texttt{AccountingStorageUser=slurm}
+          \item Modify: \\
+%          \texttt{AccountingStorageLoc=slurm\_acct\_db} \\
+%          \texttt{AccountingStoragePass} \\
+          \texttt{AccountingStorageHost=<IP or domain name>} \\
+          \texttt{AccountingStorageLoc=/var/lib/mysql} \\
+          \texttt{AccountingStoragePass=/var/run/munge/munge.socket.2}   \quad \# munge daemon port \\
+          \texttt{AccountingStoragePort=3306} \\
+          \texttt{AccountingStorageUser=slurm}
 
-		\item Add: \\
-		\texttt{AccountingStoreJobComment=YES} \\
-%		%Setting AccountingStorageEnforce requires a RESTART of slurmctld
-		\texttt{AccountingStorageEnforce=associations} \\
-		\texttt{AccountingStorageTRES=gres/gpu,gres/gpu:gtx1080ti}	\quad \# \href{https://slurm.schedmd.com/tres.html}{by default billing, CPU, energy, and node are tracked}
-		\end{enumerate}
+          \item Add: \\
+          \texttt{AccountingStoreJobComment=YES} \\
+%          %Setting AccountingStorageEnforce requires a RESTART of slurmctld
+          \texttt{AccountingStorageEnforce=associations} \\
+          \texttt{AccountingStorageTRES=gres/gpu,gres/gpu:gtx1080ti}	\quad \# \href{https://slurm.schedmd.com/tres.html}{by default billing, CPU, energy, and node are tracked}
+      \end{enumerate}
 	
-	\item Restart \texttt{slurmctld}, as required by some of these changes: \\ %\texttt{AccountingStorageEnforce} 
-	\texttt{systemctl restart slurmctld}
+    \item Restart \texttt{slurmctld}, as required by some of these changes: \\ %\texttt{AccountingStorageEnforce} 
+    \texttt{systemctl restart slurmctld}
 
-	\item Copy \texttt{slurmdbd.conf.example} to \texttt{slurmdbd.conf}.
+    \item Copy \texttt{slurmdbd.conf.example} to \texttt{slurmdbd.conf}.
 
-	\item Open \texttt{slurmdbd.conf} 
+    \item Open \texttt{slurmdbd.conf} 
 
-		\begin{enumerate}
-		\item Change the following lines to the following:
+      \begin{enumerate}
+        \item Change the following lines to the following:
 
-			\texttt{DbdAddr=<magnetoIP>} \\
-			\texttt{DbdHost=magneto} \\
-			\texttt{PidFile=/var/run/slurm-llnl/slurmdbd.pid}  %# originally in /var/run/
+          \texttt{DbdAddr=<controlIP>} \\
+          \texttt{DbdHost=<controlName>} \\
+          \texttt{PidFile=/var/run/slurm-llnl/slurmdbd.pid}  %# originally in /var/run/
 	
-		\item Modify the following:
+        \item Modify the following:
 
-			\texttt{StorageHost=magneto} \\
-			\texttt{StoragePort=3306}  \quad \# the mysql default port \\
-			\texttt{StoragePass=<password>}		\quad \# slurm's password in MariaDB
-			\texttt{StorageLoc=slurm\_acct\_db}
+          \texttt{StorageHost=magneto} \\
+          \texttt{StoragePort=3306}  \quad \# the mysql default port \\
+          \texttt{StoragePass=<password>}		\quad \# slurm's password in MariaDB
+          \texttt{StorageLoc=slurm\_acct\_db}
 	
-		\item Add the following:
+        \item Add the following:
 
-			\texttt{PurgeEventAfter=12months} \\
-			\texttt{PurgeJobAfter=12months} \\
-			\texttt{PurgeResvAfter=2months} \\
-			\texttt{PurgeStepAfter=2months} \\
-			\texttt{PurgeSuspendAfter=1month} \\
-			\texttt{PurgeTXNAfter=12months} \\
-			\texttt{PurgeUsageAfter=12months}
-		\end{enumerate}
+          \texttt{PurgeEventAfter=12months} \\
+          \texttt{PurgeJobAfter=12months} \\
+          \texttt{PurgeResvAfter=2months} \\
+          \texttt{PurgeStepAfter=2months} \\
+          \texttt{PurgeSuspendAfter=1month} \\
+          \texttt{PurgeTXNAfter=12months} \\
+          \texttt{PurgeUsageAfter=12months}
+      \end{enumerate}
 
-	\item Re-read the config files: \texttt{scontrol reconfigure}
+    \item Re-read the config files: \texttt{scontrol reconfigure}
 
-	\item We need to enable remote access to mariadb. Open \texttt{/etc/mysql/my.cnf} (it's symlinked to \texttt{/etc/mysql/mariadb.cnf}), and append the following to the end of the file:
+    \item We need to enable remote access to mariadb. Open \texttt{/etc/mysql/my.cnf} (it's symlinked to \texttt{/etc/mysql/mariadb.cnf}), and append the following to the end of the file:
 
-		\texttt{[mysqld]} \\
-		\texttt{skip-networking=0} \\
-		\texttt{skip-bind-address}
+      \texttt{[mysqld]} \\
+      \texttt{skip-networking=0} \\
+      \texttt{skip-bind-address}
 
-	\item Start MariaDB: \texttt{systemctl start mariadb}
-	\end{enumerate}
+    \item Start MariaDB: \texttt{systemctl start mariadb}
+    \end{enumerate}
 
 %%%%%%%% DATABASE SETUP %%%%%%%%
 
-\item Verify the setup with
+  \item Verify the setup with
 
-	\texttt{scontrol show config | grep AccountingStorageHost}
+    \texttt{scontrol show config | grep AccountingStorageHost}
 
 %https://slurm.schedmd.com/accounting.html#database-configuration
-\item Troubleshoot the MariaDB daemon if it didn't start automatically in the script. Follow whatever error messages it gives, then restart the node and try again.
+  \item Troubleshoot the MariaDB daemon if it didn't start automatically in the script. Follow whatever error messages it gives, then restart the node and try again.
 
-	\texttt{sudo systemctl start mariadb}
+    \texttt{sudo systemctl start mariadb}
 
-If there have been multiple failed connection attempts, you may need to use the following to unblock the host IP: 
+    If there have been multiple failed connection attempts, you may need to use the following to unblock the host IP: 
 
-	\texttt{sudo mysqladmin flush-hosts}
+    \texttt{sudo mysqladmin flush-hosts}
 
-\item Set up MariaDB:
+  \item Set up MariaDB:
 
-	\begin{enumerate}
-	\item \texttt{sudo mysql\_secure\_installation}
-	\item Set up the MariaDB root user password: Y 
-	\item Create root password: [redacted]
-	\item Remove the anonymous user: Y
-	\item Restrict root user access to the local machine: Y
-	\item Remove the test database: Y
-	\item Reload privilege tables: Y
-	\end{enumerate}
+    \begin{enumerate}
+      \item \texttt{sudo mysql\_secure\_installation}
+      \item Set up the MariaDB root user password: Y 
+      \item Create root password: [redacted]
+      \item Remove the anonymous user: Y
+      \item Restrict root user access to the local machine: Y
+      \item Remove the test database: Y
+      \item Reload privilege tables: Y
+    \end{enumerate}
 
-\item Log in to the MariaDB server as the root user and add a slurm user. (MariaDB doesn't actually require the capitalization, but I'm including it to match \href{https://mariadb.com/kb/en/library/account-management-sql-commands/}{their documentation}.
+  \item Log in to the MariaDB server as the root user and add a slurm user. (MariaDB doesn't actually require the capitalization, but I'm including it to match \href{https://mariadb.com/kb/en/library/account-management-sql-commands/}{their documentation}.
 
-	\begin{enumerate}
-	\item Open the database: \texttt{sudo mysql} %\texttt{mysql -u root -p}
+    \begin{enumerate}
+      \item Open the database: \texttt{sudo mysql} %\texttt{mysql -u root -p}
 
-	\item Create the database:
+      \item Create the database:
 
-		\texttt{MariaDB [(none)]> CREATE DATABASE slurm\_acct\_db;}
+        \texttt{MariaDB [(none)]> CREATE DATABASE slurm\_acct\_db;}
 	
-		Confirm with:
+        Confirm with:
 
-		\texttt{MariaDB [(none)]> SHOW DATABASES;}
+        \texttt{MariaDB [(none)]> SHOW DATABASES;}
 	
-	\item Create a slurm user and grant database access (replace '$<$pass$>$' with the value in \texttt{slurmdbd.conf}):
+      \item Create a slurm user and grant database access (replace '$<$pass$>$' with the value in \texttt{slurmdbd.conf}):
 
-		\texttt{GRANT ALL ON slurm\_acct\_db.* TO 'slurm'@'\%' IDENTIFIED BY '<pass>' with grant option;}
+        \texttt{GRANT ALL ON slurm\_acct\_db.* TO 'slurm'@'\%' IDENTIFIED BY '<pass>' with grant option;}
 	
-		Confirm with:
+        Confirm with:
 
-		\texttt{MariaDB [(none)]> SELECT user, host, plugin FROM mysql.user;} \\
-		\texttt{MariaDB [(none)]> SHOW GRANTS for slurm@localhost;}
+        \texttt{MariaDB [(none)]> SELECT user, host, plugin FROM mysql.user;} \\
+        \texttt{MariaDB [(none)]> SHOW GRANTS for slurm@localhost;}
 
-	\item Review the current setting for MySQL's \texttt{innodb\_buffer\_pool\_size} before running the slurmdbd for the first time.
+      \item Review the current setting for MySQL's \texttt{innodb\_buffer\_pool\_size} before running the slurmdbd for the first time.
 
-		\texttt{MariaDB [(none)]> SHOW VARIABLES LIKE innodb\_buffer\_pool\_size;}
+        \texttt{MariaDB [(none)]> SHOW VARIABLES LIKE innodb\_buffer\_pool\_size;}
 
-	\item Consider setting this value large enough to handle the size of the database. This helps when converting large tables over to the new database schema and when purging old records. Setting \texttt{innodb\_lock\_wait\_timeout} and \texttt{innodb\_log\_file\_size} to larger values than the default is also recommended. Note: The default buffer size is 128M.
+      \item Consider setting this value large enough to handle the size of the database. This helps when converting large tables over to the new database schema and when purging old records. Setting \texttt{innodb\_lock\_wait\_timeout} and \texttt{innodb\_log\_file\_size} to larger values than the default is also recommended. Note: The default buffer size is 128M.
 
-		These variables can be changed in one of the following files (not sure which one, but I suspect it's the first one):
+        These variables can be changed in one of the following files (not sure which one, but I suspect it's the first one):
 
-		\texttt{/etc/mysql/conf.d/mysql.cnf} \\
-		\texttt{/etc/mysql/mariadb.cnf} \\
-		\texttt{/etc/mysql/mariadb.conf.d/*.cnf}
+        \texttt{/etc/mysql/conf.d/mysql.cnf} \\
+        \texttt{/etc/mysql/mariadb.cnf} \\
+        \texttt{/etc/mysql/mariadb.conf.d/*.cnf}
 
-		\begin{verbatim}
+        \begin{verbatim}
 		[mysqld]
 		innodb_buffer_pool_size=256M
 		innodb_log_file_size=256M
 		innodb_lock_wait_timeout=1800
-		\end{verbatim}
+        \end{verbatim}
 
-		To implement this change you must shut down the database and move/remove the log files:
+        To implement this change you must shut down the database and move/remove the log files:
 
-		\begin{verbatim}
+        \begin{verbatim}
 		sudo systemctl stop mariadb
 		sudo rm /var/lib/mysql/ib_logfile?
 		sudo systemctl start mariadb
-		\end{verbatim}
+        \end{verbatim}
 
-		Verify the new buffer setting using the following command in the MariaDB shell:
+        Verify the new buffer setting using the following command in the MariaDB shell:
 
-		\texttt{MariaDB [(none)]> SHOW VARIABLES LIKE innodb\_buffer\_pool\_size;}
+        \texttt{MariaDB [(none)]> SHOW VARIABLES LIKE innodb\_buffer\_pool\_size;}
 
-		This has been left as the default for now (obviously).
+        This has been left as the default for now (obviously).
 
-	\item Exit MariaDB:
+      \item Exit MariaDB:
 
-		\texttt{MariaDB [(none)]> QUIT;}
-	\end{enumerate}
+        \texttt{MariaDB [(none)]> QUIT;}
+    \end{enumerate}
 
-\item Start \texttt{slurmdbd}, acting on any issues that may appear:
+  \item Start \texttt{slurmdbd}, acting on any issues that may appear:
 
-	\texttt{sudo systemctl start slurmdbd}
+    \texttt{sudo systemctl start slurmdbd}
 
-	One issue I encountered was fixed by manually changing the owner of the database directory, and reinstall mariadb:
+    One issue I encountered was fixed by manually changing the owner of the database directory, and reinstall mariadb:
 	
-	\texttt{sudo chown mysql: /var/lib/mysql} \\
+    \texttt{sudo chown mysql: /var/lib/mysql} \\
 	\texttt{sudo apt install --reinstall mariadb-common mariadb-client mariadb-server}
 	
 	Try setting up the database again.
 
 	If it's still grumpy, install \texttt{mysql-server-5.7} with \texttt{apt}, then try setting up the database again.
 
-\item Enable \texttt{mariadb} and \texttt{slurmdbd}.
+  \item Enable \texttt{mariadb} and \texttt{slurmdbd}.
 
 %%%%%%%% ACCOUNTING SETUP %%%%%%%%
 
-\item For job accounting to work, the database and accounting tools must be configured as explained in \href{https://slurm.schedmd.com/accounting.html#database-configuration}{the official documentation}. Use \texttt{sacctmgr} to create and manage these records.
+  \item For job accounting to work, the database and accounting tools must be configured as explained in \href{https://slurm.schedmd.com/accounting.html#database-configuration}{the official documentation}. Use \texttt{sacctmgr} to create and manage these records.
 
-Accounting records are maintained based on ``associations" consisting of four elements: cluster, account, user names and an optional partition name. All accounting things are lower case. \emph{You must define clusters before you add accounts and you must add accounts before you add users.}
+    Accounting records are maintained based on ``associations" consisting of four elements: cluster, account, user names and an optional partition name. All accounting things are lower case. \emph{You must define clusters before you add accounts and you must add accounts before you add users.}
 %\url{https://wiki.fysik.dtu.dk/niflheim/Slurm_accounting}
 
-	\begin{enumerate}
-	\item Add the cluster to the database: \\
-		\texttt{sacctmgr add cluster <clustername>}
+    \begin{enumerate}
+      \item Add the cluster to the database: \\
+        \texttt{sacctmgr add cluster <clustername>}
 
-	\item Add accounts: \\	
-		\texttt{sacctmgr add account <account> [Cluster=<clustername>] [parent=<parent>] \textbackslash{}}\\ 
-		\texttt{Description="<description>" Organization=<organization>} \\
-		Omitting \texttt{Cluster} will add the account to all clusters. \texttt{parent} is only required if the new account is a sub-account of another account. \\
+      \item Add accounts: \\	
+        \texttt{sacctmgr add account <account> [Cluster=<clustername>] [parent=<parent>] \textbackslash{}}\\ 
+        \texttt{Description="<description>" Organization=<organization>} \\
+        Omitting \texttt{Cluster} will add the account to all clusters. \texttt{parent} is only required if the new account is a sub-account of another account.
 
+%		\input{./Chapters/ClusterAccts.tex}
 
-	\item Add users: 
+      \item Add users: 
 
-		\texttt{sacctmgr add user <username> [Account=<accounts>] [DefaultAccount=<account>]}
+        \texttt{sacctmgr add user <username> [Account=<accounts>] [DefaultAccount=<account>]}
 
-%		Is it \texttt{sacctmgr add user <username>} or \texttt{sacctmgr add user name=<username>}?
+%        Is it \texttt{sacctmgr add user <username>} or \texttt{sacctmgr add user name=<username>}?
 
-		\texttt{Account} can take a single account or a comma separated list. Not specifying \texttt{Account} will give the user access to all accounts on the cluster. \texttt{DefaultAccount} will set the default account for a user. At least one of the two options is required. \\
+        \texttt{Account} can take a single account or a comma separated list. Not specifying \texttt{Account} will give the user access to all accounts on the cluster. \texttt{DefaultAccount} will set the default account for a user. At least one of the two options is required. \\
 
+%        \input{./Chapters/ClusterAcctUsers.tex}
 
-	\item Commands to view accounting information:
+      \item Commands to view accounting information:
 
-		\texttt{sacctmgr list cluster} \\
-		\texttt{sacctmgr list configuration} \\
-		\texttt{sacctmgr list stats}
+        \texttt{sacctmgr list cluster} \\
+        \texttt{sacctmgr list configuration} \\
+        \texttt{sacctmgr list stats}
 	
-	\end{enumerate}
+    \end{enumerate}
 
 %%%%%%%% v NEW v %%%%%%%%
-\item If other nodes than the \texttt{slurmdbd} node must be able to connect to the \texttt{slurmdbd} service, you must open the firewall to specific hosts. Please see the \href{https://wiki.fysik.dtu.dk/niflheim/Slurm_configuration}{Slurm\_configuration} page under the firewall section.
+  \item If other nodes than the \texttt{slurmdbd} node must be able to connect to the \texttt{slurmdbd} service, you must open the firewall to specific hosts. Please see the \href{https://wiki.fysik.dtu.dk/niflheim/Slurm_configuration}{Slurm\_configuration} page under the firewall section.
 
-\item Make the following changes in \texttt{slurmdbd.conf}:
+  \item Make the following changes in \texttt{slurmdbd.conf}:
 
-	May want to set \texttt{PrivateData}
+    May want to set \texttt{PrivateData}
 
-\item Currently have no need to set up WCkeys. (\href{https://slurm.schedmd.com/wckey.html}{Workload characterization keys} are an orthogonal way to do accounting against possibly unrelated accounts. This can be useful where users from different accounts are all working on the same project.)
+  \item Currently have no need to set up WCkeys. (\href{https://slurm.schedmd.com/wckey.html}{Workload characterization keys} are an orthogonal way to do accounting against possibly unrelated accounts. This can be useful where users from different accounts are all working on the same project.)
 
-\item \href{https://slurm.schedmd.com/qos.html}{QOS} includes multifactor job priority and job preemption. View with \texttt{sacctmgr}. By default everything is assigned normal. Can create something with higher priority.
+  \item \href{https://slurm.schedmd.com/qos.html}{QOS} includes multifactor job priority and job preemption. View with \texttt{sacctmgr}. By default everything is assigned normal. Can create something with higher priority.
 
-\item Job completion logging is redundant if using the accounting infrastructure.
+  \item Job completion logging is redundant if using the accounting infrastructure.
 %%%%%%%% ^ NEW ^ %%%%%%%%
 
 %%%%%%%% PAM MODULE SETUP %%%%%%%%
-\item Don't set up PAM with the configuration we currently have! As long as users must submit from the node they want to run on, this is counterproductive!! For future use, see \href{https://wiki.fysik.dtu.dk/niflheim/Slurm_configuration#pam-module-restrictions}{this guide}.
+  \item Don't set up PAM with the configuration we currently have! As long as users must submit from the node they want to run on, this is counterproductive!! For future use, see \href{https://wiki.fysik.dtu.dk/niflheim/Slurm_configuration#pam-module-restrictions}{this guide}.
 
 %%%%%%%% START SLURM %%%%%%%%
-\item Enable and start all daemons: \texttt{mariadb}, \texttt{slurmdbd}, \texttt{slurmctld}, \texttt{slurmd}
+  \item Enable and start all daemons: \texttt{mariadb}, \texttt{slurmdbd}, \texttt{slurmctld}, \texttt{slurmd}
 
-\item If you wish to customize \texttt{squeue} output, refer to section \ref{sec:customsqueue}
-
+  \item If you wish to customize \texttt{squeue} output, refer to section \ref{sec:customsqueue}
 \end{enumerate}
 
-%
-%\section{MariaDB setup on new database host} \label{sec:movemariadb}
-%
-%\begin{enumerate}
-%\item Find the current database directory. It should report back the default (\texttt{/var/lib/mysql}): \\
-%\texttt{sudo mysql -e "SELECT @@datadir;"}
-%
-%\item Stop the database daemons to avoid data corruption: \\
-%\texttt{sudo systemctl stop slurmdbd} \\
-%\texttt{sudo systemctl stop mariadb} \\
-%\texttt{sudo systemctl is-active mariadb}
-%
-%\item Create the new directory and change it's owner to \texttt{mysql}: \\
-%\texttt{sudo mkdir /srv/mariadb-data} \\
-%\texttt{sudo chown mysql: /srv/mariadb-data} 
-%
-%\item Recursively copy the data to the new location: \\
-%\texttt{sudo cp -R -p /var/lib/mysql/* /srv/mariadb-data}
-%
-%\item Back up the original configuration files: \\
-%\texttt{cd /etc/mysql} \\
-%\texttt{sudo cp mysql.cnf mysql.cnf.backup} \\
-%\texttt{sudo cp debian.cnf debian.cnf.backup} \\
-%\texttt{sudo cp debian.cnf-5.7 debian.cnf-5.7.backup} \\
-%\texttt{cd /etc/mysql/mariadb.conf.d} \\
-%\texttt{sudo cp 50-server.cnf 50-server.cnf.backup} \\
-%\texttt{sudo cp 50-client.cnf 50-client.cnf.backup}
-%
-%\item Configure all the things: (\href{https://www.tecmint.com/change-default-mysql-mariadb-data-directory-in-linux/}{original source})
-%
-%In \texttt{/etc/mysql}, replace \texttt{mysql.conf.d} with \texttt{mariadb.conf.d}.
-%
-%In \texttt{/etc/mysql/debian.cnf-5.7}, replace both instances of \texttt{socket=\dots} with: \\
-%\texttt{socket=/srv/mariadb-data/mysql.sock}
-%
-%In \texttt{/etc/mysql/debian.cnf}, replace both instances of \texttt{socket=\dots} with: \\
-%\texttt{socket=/srv/mariadb-data/mysql.sock}
-%
-%In \texttt{/etc/mysql/mariadb.conf.d/50-client.cnf}, change the following under \texttt{[mysql]}: \\
-%\texttt{socket=/srv/mariadb-data/mysql.sock} \\
-%\texttt{port=3306} \texttt{\# new line}
-%
-%In \texttt{/etc/mysql/mariadb.conf.d/50-server.cnf}, change the following under \texttt{[mysqld]}: \\
-%\texttt{socket=/srv/mariadb-data/mysql.sock} \\
-%\texttt{pid-file=/srv/mariadb-data/mysql.pid} \\
-%\texttt{datadir=/srv/mariadb-data}
-%
-%\item Start \texttt{mariadb} and check its status.
-%\texttt{sudo systemctl daemon-reload} \\
-%\texttt{sudo systemctl start mariadb} \\
-%\texttt{sudo systemctl status mariadb}
-%
-%\item Double check that the database directory has been updated: \\
-%\texttt{sudo mysql -e "SELECT @@datadir;"}
-%
-%\item Start \texttt{slurmdbd} and check it's status.
-%
-%\end{enumerate}
+%%
+%%\section{MariaDB setup on new database host} \label{sec:movemariadb}
+%%
+%%\begin{enumerate}
+%%  \item Find the current database directory. It should report back the default (\texttt{/var/lib/mysql}): \\
+%%    \texttt{sudo mysql -e "SELECT @@datadir;"}
+%%
+%%  \item Stop the database daemons to avoid data corruption: \\
+%%    \texttt{sudo systemctl stop slurmdbd} \\
+%%    \texttt{sudo systemctl stop mariadb} \\
+%%    \texttt{sudo systemctl is-active mariadb}
+%%
+%%  \item Create the new directory and change it's owner to \texttt{mysql}: \\
+%%    \texttt{sudo mkdir /srv/mariadb-data} \\
+%%    \texttt{sudo chown mysql: /srv/mariadb-data} 
+%%
+%%  \item Recursively copy the data to the new location: \\
+%%    \texttt{sudo cp -R -p /var/lib/mysql/* /srv/mariadb-data}
+%%
+%%  \item Back up the original configuration files: \\
+%%    \texttt{cd /etc/mysql} \\
+%%    \texttt{sudo cp mysql.cnf mysql.cnf.backup} \\
+%%    \texttt{sudo cp debian.cnf debian.cnf.backup} \\
+%%    \texttt{sudo cp debian.cnf-5.7 debian.cnf-5.7.backup} \\
+%%    \texttt{cd /etc/mysql/mariadb.conf.d} \\
+%%    \texttt{sudo cp 50-server.cnf 50-server.cnf.backup} \\
+%%    \texttt{sudo cp 50-client.cnf 50-client.cnf.backup}
+%%
+%%  \item Configure all the things: (\href{https://www.tecmint.com/change-default-mysql-mariadb-data-directory-in-linux/}{original source})
+%%
+%%    In \texttt{/etc/mysql}, replace \texttt{mysql.conf.d} with \texttt{mariadb.conf.d}.
+%%
+%%    In \texttt{/etc/mysql/debian.cnf-5.7}, replace both instances of \texttt{socket=\dots} with: \\
+%%    \texttt{socket=/srv/mariadb-data/mysql.sock}
+%%
+%%    In \texttt{/etc/mysql/debian.cnf}, replace both instances of \texttt{socket=\dots} with: \\
+%%    \texttt{socket=/srv/mariadb-data/mysql.sock}
+%%
+%%    In \texttt{/etc/mysql/mariadb.conf.d/50-client.cnf}, change the following under \texttt{[mysql]}: \\
+%%    \texttt{socket=/srv/mariadb-data/mysql.sock} \\
+%%    \texttt{port=3306} \texttt{\# new line}
+%%
+%%  In \texttt{/etc/mysql/mariadb.conf.d/50-server.cnf}, change the following under \texttt{[mysqld]}: \\
+%%    \texttt{socket=/srv/mariadb-data/mysql.sock} \\
+%%    \texttt{pid-file=/srv/mariadb-data/mysql.pid} \\
+%%    \texttt{datadir=/srv/mariadb-data}
+%%
+%%  \item Start \texttt{mariadb} and check its status.
+%%    \texttt{sudo systemctl daemon-reload} \\
+%%    \texttt{sudo systemctl start mariadb} \\
+%%    \texttt{sudo systemctl status mariadb}
+%%
+%%  \item Double check that the database directory has been updated: \\
+%%    \texttt{sudo mysql -e "SELECT @@datadir;"}
+%%
+%%  \item Start \texttt{slurmdbd} and check it's status.
+%%\end{enumerate}
 
-\section{Adjusting configuration files} \label{sec:slurmconfig}
 
-When changing configuration files (e.g.\ \texttt{slurm.conf}, \texttt{cgroup.conf}), the change must be distributed to all nodes before applying the changes. You may also have to restart the slurm daemons.
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%\
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%\
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%\
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%\
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%\
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%\
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%\
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%\
 
-\begin{enumerate}
-\item If you modify settings like Epilog, Prolog, SlurmctldLogFile, SlurmdLogFile, etc.), all you need to do is run \texttt{scontrol reconfigure} on the control node to force all slurm daemons to re-read the configuration files. The slurm controller (\texttt{slurmctld}) forwards the request to all other daemons (e.g.\ \texttt{slurmd}). Running jobs will continue execution. 
-\item Slurm daemons \emph{must be restarted} if any of these parameters are changed: AccountingStorageEnforce, AuthType, BackupAddr, BackupController, ControlAddr, ControlMach, PluginDir, StateSaveLocation, SlurmctldPort, SlurmdPort.
-\item Slurm daemons \emph{must be restarted} if nodes are added to or removed from the cluster.
-\end{enumerate}
 
-\texttt{ControlMachine} and \texttt{ControlAddr} are defunct in newer versions; use \texttt{SlurmctldHost} instead.
 
-\subsection{Adding/removing nodes} \label{subsec:addnodes}
-
-When adding/removing nodes, do the following:
-\begin{enumerate}
-\item Stop \texttt{slurmctld}
-\item Add/remove nodes in \texttt{slurm.conf}
-\item Restart \texttt{slurmd} on all nodes
-\item Start \texttt{slurmctld}
-\end{enumerate}
-
-\noindent It is also possible to add nodes to \texttt{slurm.conf} with \texttt{state=FUTURE}. The nodes will not be seen by slurm commands in this state. Make them available by changing their state in the \texttt{slurm.conf} file and update the node state using \texttt{scontrol} rather than restarting the \texttt{slurmctld} daemon.
-
-\section{Slurm plugins} \label{sec:slurmplugins}
-
-Do not change the default Slurm plugin location in \texttt{slurm.conf}!
-
-Default: \texttt{/usr/lib/x86\_64-linux-gnu/slurm-wlm}
-
-\section{Slurm admin commands} \label{sec:slurmadmin}
-These are the most common admin-specific commands \emph{in addition to the ones listed in section \ref{sec:queuecommands}}. (Those commands can be run with \texttt{sudo} to affect \emph{any} job.) For details, refer to \texttt{man <command>}.
-
-\begin{itemize}
-\item Setup and rebooting commands \\
-\addcontentsline{lot}{table}{Slurm setup and management}
-\begin{tabular}{l p{3.4in}}
-\texttt{scontrol takedown} & Orders switch to backup controller \\
-\texttt{scontrol reboot [ASAP] [Nodelist]} & Reboots nodes, see documentation \\
-\texttt{scontrol shutdown} & Shuts down the slurm daemons \\
-\texttt{sacctmgr shutdown} & Shuts down the cluster \\
-\texttt{slurmd -C} & Displays the physical configuration of a node when run on that specific node \\
-\texttt{scontrol reconfigure} & Makes running daemons re-read configuration files \\
-\end{tabular}
-
-\item Selected management and accounting commands \\
-\addcontentsline{lot}{table}{Slurm management and accounting commands}
-\begin{tabular}{l p{3.4in}}
-\texttt{sacct [options]} & Display accounting information for slurm jobs \\
-\texttt{sacctmgr} & View and modify slurm account info \\
-\texttt{sacctmgr add <entity> <specs>} & Add cluster, accounts, users; identical to \texttt{create} \\
-\texttt{sacctmgr list <entity> [specs]} & Displays information about the specified entity\\
-\texttt{sdiag} & Scheduling diagnostic tool \\
-\texttt{smd} & Failure management suport tool \\
-\texttt{sreport [options] [command]} & Generates reports of job usage and cluster utilization \\
-\texttt{sstat} & Display various status information \\
-\texttt{sview} & Graphical user interface to view and modify slurm \\
-\end{tabular}
-
-%\item User management commands (beyond commands in the previous section)\\
-%\addcontentsline{lot}{table}{Slurm user management}
-%\begin{tabular}{l p{3.4in}}
-%squeue -ho %A -t R | xargs -n 1 scontrol suspend
-%squeue -o "%.18A %.18t" -u <username> | awk '{if ($2 =="S"){print $1}}' | xargs -n 1 scontrol resume
-%squeue -ho %A -u $USER -t S | wc -l
-%lsload |grep 'Hostname\|<partition>'
-%\end{tabular}
-
-\item Daemon commands: \texttt{slurmctld}, \texttt{slurmd}, and \texttt{slurmdbd} are the master/control, compute, and database daemons, respectively. They may need to be restarted if configuration files are modified (section \ref{sec:slurmconfig}). \\
-\addcontentsline{lot}{table}{Slurm daemons}
-\begin{tabular}{l p{3.8in}}
-\texttt{systemctld enable <daemon>} & Enable daemons to start on boot; will not start a stopped daemon \\
-\texttt{systemctld disable <daemon>} & Disable daemon so that it will not start; will not stop a running daemon \\
-\texttt{systemctld start <daemon>} & Starts daemon manually, does not enable the daemon \\
-\texttt{systemctld stop <daemon>} & Stops daemon manually, does not disable the daemon \\
-\texttt{systemctld status <daemon>} & Reports status of daemon \\
-\texttt{<daemon> -Dvvvv} & Manually starts the daemon; ``D" runs in the foreground and ``v"s (can have 0 to 7 ``v"s) indicates desired verbosity \\
-\end{tabular}
-
-\end{itemize}
-
-\section{Reboot and shutdown nodes} \label{sec:slurmpowercycle}
-
-\subsection{Reboot} \label{subsec:slurmreboot}
-
-Nodes may need to be rebooted after firmware or kernel upgrades. Use the \texttt{RebootProgram} in \texttt{slurm.conf} to reboot nodes as they become idle. Be mindful of slurm downtime behavior (section \ref{subsec:slurmdowntime}).
-
-If you are rebooting the primary controller, the switch should be automatic, but you can also instruct the backup controller to take over. The backup controller requests control from the primary and wait for its termination, then switches to controller mode if primary controller cannot be contacted. This speeds up the slurm controller fail-over mechanism and minimizes disruption when the primary control node is down. Note: the primary controller will take the control back at startup. To reboot nodes
-
-\begin{verbatim}
-# Force switch to the backup controller (primary controller only)
-scontrol takeover
-# All nodes
-scontrol reboot [ASAP] [NodeList]                                       # slurm 17.11.2
-scontrol reboot [ASAP] [nextstate=<RESUME|DOWN>] [reason=<reason>] [NodeList]  # newer
-\end{verbatim}
-
-Explanation: \texttt{ASAP} prevents initiation of new jobs. Otherwise the system waits until it is idle to reboot and job scheduling is still allowed. The node state will be DRAIN (17.11.2) or REBOOT (newer) until rebooted or the reboot is cancelled. Newer versions of slurm also include \texttt{nextstate}, which specifies the state of the node after reboot, and \texttt{reason}, which shows users the reason the node is unavailable.
-
-To cancel a reboot, use one of the following
-
-\begin{verbatim}
-scontrol update NodeName=<nodename> State=RESUME   # slurm 17.11.2
-scontrol cancel_reboot <nodelist>                  # newer versions, e.g. 18.08
-\end{verbatim}
-
-\subsection{Shutdown} \label{subsec:slurmshutdown}
-
-Shut down slurm daemons with \texttt{scontrol shutdown [options]}, and servers with \texttt{sacctmgr shutdown}.
-
-\subsection{Slurm downtime behavior} \label{subsec:slurmdowntime}
-Be mindful of your configured SlurmdTimeout and SlurmctldTimeout values. If the Slurm daemons are down for longer than the specified timeout (currently 5 minutes), nodes will be marked DOWN and their jobs killed. Either increase the timeout values during an upgrade or ensure that the compute node slurmd are not down for longer than SlurmdTimeout. 
-
-\section{Backup and restore database} \label{sec:slurmDBbackup}
-
-In order to backup the entire database to a different location (for disaster recovery or migration), the following files must be backed up. \href{https://wiki.fysik.dtu.dk/niflheim/Slurm_database#backup-and-restore-of-database}{(source)} Make a database mysqldump using this script /root/mysqlbackup (insert the correct root database password for PWD). 
-
-\begin{verbatim}
-#!/bin/sh
-# MySQL Backup Script for All Databases
-HOST=localhost
-BACKUPFILE=/root/mysql_dump
-USER=root
-PWD='**********'
-DUMP_ARGS="--opt --flush-logs --quote-names"
-DATABASES="--all-databases"
-/usr/bin/mysqldump --host=$HOST --user=$USER --password=$PWD $DUMP_ARGS \
-     --result-file=$BACKUPFILE $DATABASES
-\end{verbatim}
-
-Write permission to \$BACKUPFILE is required.
-
-Make regular database dumps, for example by a crontab job:
-\texttt{30 7 * * * /root/mysqlbackup}
-
-Restore of a database backup: The database contents must be loaded from the backup. To restore a MySQL database see for example \href{http://stackoverflow.com/questions/105776/how-do-i-restore-a-mysql-dump-file}{How do I restore a MySQL .dump file?}. As user root input the above created backup file:
-
-\texttt{mysql -u root -p < /root/mysql\_dump}
-
-\section{Upgrading slurm} \label{sec:slurmupgrade}
-
-Almost every new major release of Slurm (e.g. 16.05.x to 17.02.x) involves changes to the state files with new data structures, new options, etc. Slurm permits upgrades between any two versions whose major release numbers differ by two or less (e.g. 16.05.x or 17.02.x to 17.11.x) without loss of jobs or other state information. State information from older versions will not be recognized and will be discarded, resulting in loss of all running and pending jobs. State files are not recognized when downgrading and will be discarded. Create backup copies of state files before proceeding to later recover the jobs.
-
-\texttt{slurmdbd} must be the same or higher major release as \texttt{slurmctld}. When changing the version to a higher release number (e.g.\ from 16.05.x to 17.02.x) \emph{always} upgrade \texttt{slurmdbd} first. Database table changes may be required for the upgrade. If the database contains a large number of entries, \texttt{slurmdbd} may require an hour or two to update the database and will be unresponsive during this time.
-
-\texttt{slurmctld} must be upgraded before or at the same time as \texttt{slurmd} on the compute nodes. It is recommended to update all daemons at the same time.
-
-The libslurm.so version is increased every major release. Packages with slurm integration (e.g.\ MPI libraries) should be recompiled. Sometimes symlinking old \texttt{.so} name(s) to the new one(s) may work, but this is not guaranteed.
-
-If you built your own version of Slurm plugins, they will likely need modification to support a new version of Slurm. It is common for plugins to add new functions and function arguments during major updates. See the RELEASE\_NOTES file for details.
-
-The recommended upgrade order is as follows:
-
-    \begin{enumerate}
-    \item Shutdown the slurmdbd daemon
-    \item Dump the Slurm database using \texttt{mysqldump} in case of possible failure
-    \item Increase \texttt{innodb\_buffer\_size} in \texttt{my.cnf} to 128M
-    \item Upgrade the slurmdbd daemon
-    \item Restart the slurmdbd daemon
-    \item Increase SlurmdTimeout and SlurmctldTimeout values and \texttt{scontrol reconfigure} to take effect
-    \item Shutdown the slurmctld daemon(s)
-    \item Shutdown the slurmd daemons on the compute nodes
-    \item Copy the contents of the configured StateSaveLocation directory in case of possible failure
-    \item Upgrade the slurmctld and slurmd daemons
-    \item Restart the slurmd daemons on the compute nodes
-    \item Restart the slurmctld daemon(s)
-    \item Validate proper operation
-    \item Restore original SlurmdTimeout and SlurmctldTimeout, and then \texttt{scontrol reconfigure}
-    \item Destroy backup copies of database and/or state files
-    \end{enumerate}
-
-Note: It is possible to update the slurmd daemons on a node-by-node basis after the slurmctld daemon(s) are upgraded, but make sure their down time is below the SlurmdTimeout value.

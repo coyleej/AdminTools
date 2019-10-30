@@ -10,7 +10,7 @@
 #  REQUIREMENTS:  ---
 #          BUGS:  ---
 #         NOTES:  ---
-#        AUTHOR:  Eleanor Coyle, coyleej@protonmail.com
+#        AUTHOR:  Eleanor Coyle, ecoyle@azimuth-corp.com
 #       COMPANY:  Azimuth Corporation
 #       VERSION:  1.0
 #       CREATED:  2019-04-25

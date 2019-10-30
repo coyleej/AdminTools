@@ -1,0 +1,19 @@
+If you wish to make a change affecting the entire cluster, such as manually updating the whole cluster, installing the same package on all machines, or updating \texttt{slurm.conf}, the following framework allows you to do so. Working examples in the \href{https://github.com/coyleej/MiniClusterTools}{MiniClusterTools repository} are \texttt{update\_upgrade\_cluster.sh} and \texttt{distribute\_slurm\_conf.sh} (section \ref{sec:slurmconfig}).
+
+%Note: \texttt{ssh} keys (section \ref{subsec:ssh-keys}) are recommended but not required. 
+Note: \texttt{ssh} keys are recommended but not required. 
+
+\begin{verbatim}
+sshkey='/dev/null'
+admin='admin'
+remote_IP=('server1' 'server2' 'server3')
+
+# Propagate updated slurm.conf to the rest of the cluster
+for IP in ${remote_IP[*]}
+do
+        rsync -au --fake-super -e "ssh -i $sshkey" "/etc/slurm-llnl/slurm.conf" \
+                $admin@$IP:/home/$admin/
+        ssh -i $sshkey -t $admin@$IP 'sudo cp slurm.conf /etc/slurm-llnl/slurm.conf; \
+                sudo chown slurm: /etc/slurm-llnl/slurm.conf'
+done
+\end{verbatim}

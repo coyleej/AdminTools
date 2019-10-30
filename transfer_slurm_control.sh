@@ -12,11 +12,11 @@
 #  REQUIREMENTS:  ---
 #          BUGS:  ---
 #         NOTES:  Variables need to be filled in or code will not work
-#        AUTHOR:  Eleanor Coyle, coyleej@protonmail.com
+#        AUTHOR:  Eleanor Coyle, ecoyle@azimuth-corp.com
 #       COMPANY:  Azimuth Corporation
 #       VERSION:  1.0
 #       CREATED:  2019-08-22
-#      REVISION:  2019-09-03
+#      REVISION:  2019-10-04
 #
 #===================================================================================
 
@@ -34,8 +34,12 @@ else
 	rsync -au --fake-super -e "ssh -i $sshkey" "/home/$local_admin/slurm_state" $remote_admin@$remote_IP:/home/$remote_admin/
 	ssh -i $sshkey -t $remote_admin@$remote_IP 'sudo bash ~/Code/MiniClusterTools/copy_state.sh to_root with_sudo'
 
-	echo "Issuing takeover command and killing local controller daemon"
-	sudo scontrol takeover
-	sudo systemctl stop slurmctld
+        if [ $? = 0 ]; then
+                echo "Issuing takeover command and killing local controller daemon"
+                sudo scontrol takeover && sudo systemctl stop slurmctld
+        else
+                echo "ERROR encountered when transfering state. Not issuing takeover command!"
+                exit 1
+        fi
 fi
 

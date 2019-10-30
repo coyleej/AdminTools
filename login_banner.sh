@@ -10,7 +10,7 @@
 #  REQUIREMENTS:  ---
 #          BUGS:  ---
 #         NOTES:  The control nodes do not have a display manager installed.
-#        AUTHOR:  Eleanor Coyle, coyleej@protonmail.com
+#        AUTHOR:  Eleanor Coyle, ecoyle@azimuth-corp.com
 #       COMPANY:  Azimuth Corporation
 #       VERSION:  1.0
 #       CREATED:  2019-05-06

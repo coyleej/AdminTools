@@ -20,11 +20,12 @@
 	\vfill
 	{\huge\scshape MiniClusterTools Documentation\par}
 
-	\vspace{3cm}
+	\vspace{2cm}
 	\textbf{Repo: \href{https://github.com/coyleej/MiniClusterTools}{https://github.com/coyleej/MiniClusterTools}}
 
-	\vspace{0.5cm}
-	\textbf{Author: Eleanor Coyle}
+	\vspace{1cm}
+	\textbf{Author: Eleanor Coyle}\par
+	\textbf{Contact: ecoyle@azimuth-corp.com}
 
 	\vfill
 	\textbf{Operating system and shell} \par
@@ -69,8 +70,12 @@ Downloads all of the necessary machine learning repos (pybind11, OpenBLAS, S4, M
 
 	\input{./Chapters/MLinstall.tex}
 
-%%%%% MONITORING %%%%%
-\chapter{Monitoring scripts}		\label{ch:monitor}
+%%%%% MONITORING & MAINTENANCE %%%%%
+\chapter{Monitoring and maintenance scripts}		\label{ch:monitor}
+
+\section{Propagate changes to entire cluster} \label{sec:propagate}
+
+\input{./Chapters/PropagateToAllServers.tex}
 
 \section{check\_passwd\_expiry.sh}	\label{sec:passwdExp}
 Returns a warning if the user's password expires in 7 or fewer days.
@@ -103,6 +108,9 @@ Test if slurm is working properly by submitting a simple job with \texttt{sbatch
 %%%%% SLURM %%%%%
 % All slurm-related setup, chapter header in file
 \input{./Chapters/SlurmSetup.tex}
+
+% All slurm-related administration, chapter header in file
+\input{./Chapters/SlurmAdmin.tex}
 
 \end{document}
 

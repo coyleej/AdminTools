@@ -75,7 +75,7 @@ Conda environment setup, required by repo_download_w_some_setup.sh
 
 Very simple script to test slurm installation.
 
-## Documentation (the doc/ directory)
+## Documentation (the doc directory)
 
 Hopefully self-explanatory. Contains a PDF and a number of .tex files.
 
