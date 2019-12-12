@@ -1,8 +1,37 @@
 #!/bin/bash
 
+#===================================================================================
+#
+#          FILE:  grab_slurm_mail.sh
+#
+#   DESCRIPTION:  This script is a workaround that is only intended for systems 
+#                 WITHOUT a FQDN. You may still use it if you have a FQDN, but I
+#                 don't know why you'd want to.
+#
+#                 Grabs slurm mail information and and distributes it to the 
+#                 relevant user as Slurm_mail.log. Users can delete Slurm_mail.log 
+#                 file as desired without harming operation of this script.
+#
+#                 This script must run on the controller and makes no attempt to 
+#                 transfer files to another system. That is currently left to the 
+#                 user.
+#
+#                 Add to root's crontab to make it run automatically once an hour.
+#
+#       OPTIONS:  ---
+#  REQUIREMENTS:  ---
+#          BUGS:  ---
+#         NOTES:  ---
+#        AUTHOR:  Eleanor Coyle, ecoyle@azimuth-corp.com
+#       COMPANY:  Azimuth Corporation
+#       VERSION:  1.0
+#       CREATED:  2019-11-20
+#      REVISION:  2019-12-12
+#
+#===================================================================================
+
 # File where mail can be found
 mail_file="/var/spool/mail/slurm"
-#mail_file="var_mail_example.txt" ## For testing only
 
 # Make sure destination file exists for all human users
 userlist=$(grep "^users" /etc/group | sed -e "s/,/ /g" -e "s/^.*[0-9]*://" -e "s/nessus//" -e "s/slurm//" -e "s/mfe//")
@@ -17,7 +46,6 @@ done
 # Script will check for new information hourly
 # Using timezone trickery to grab the previous hour's messages
 hour=$(TZ=CST6CDT date +"%a, %_d %b %Y %_H")
-#hour="Fri, 15 Nov 2019 14"	## For testing only
 
 # Find the line(s) for the previous hour (grep will grab all matches)
 line_num=$(grep -n "^Date.*${hour}" ${mail_file} | cut -d ":" -f 1 | tr "\n" " ")
