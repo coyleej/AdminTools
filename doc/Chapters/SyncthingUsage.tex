@@ -1,8 +1,10 @@
 \subsection{Summarize syncthing usage} \label{subsec:syncsize}
 
-The \texttt{synthing\_usage.sh} script in the \href{https://github.com/coyleej/MiniClusterTools}{MiniClusterTools repository} reports the size of all directories in the syncthing folder. It reports on all directories but does \emph{not} message users.  
+The \texttt{synthing\_usage.sh} script in the \href{https://github.com/coyleej/MiniClusterTools}{MiniClusterTools repository} reports the size of all directories in the syncthing folder. It generates a report on all directories. It does \emph{not} message users; see section \ref{subsec:syncautomessage} if you wish to set up automatic messaging.
 
 \subsection{Automated messages about syncthing usage} \label{subsec:syncautomessage}
+
+If you wish to automatically message users, you'll need the \texttt{synthing-usage} script in the \href{https://github.com/coyleej/MiniClusterTools}{MiniClusterTools repository}.
 
 \begin{enumerate}
   \item Copy \texttt{syncthing-warning} into \texttt{/usr/share} on the servers. Add eye-catching ASCII art if desired.
