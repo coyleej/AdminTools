@@ -1,37 +1,37 @@
 You must configure \texttt{gdm3} as described below. These changes are automated in the \texttt{login\_banner.sh} file.
 
 \begin{enumerate}
-\item NVidia and Wayland will not get along if you modify the default \texttt{gdm} settings (read: you can't log in and the NVidia drivers get corrupted). Open \texttt{/etc/gdm3/custom.conf} and set:
+  \item NVidia and Wayland will not get along if you modify the default \texttt{gdm} settings (read: you can't log in and the NVidia drivers get corrupted). Open \texttt{/etc/gdm3/custom.conf} and set:
 
-\texttt{WaylandEnable=false}
+    \texttt{WaylandEnable=false}
 
-\item Create the following files and directories:
-\begin{verbatim}
-sudo touch /etc/dconf/profile/gdm
-sudo mkdir /etc/dconf/db/gdm.d
-sudo touch /etc/dconf/db/gdm.d/01-banner-message
-\end{verbatim}
+  \item Create the following files and directories:
+	\begin{verbatim}
+	sudo touch /etc/dconf/profile/gdm
+	sudo mkdir /etc/dconf/db/gdm.d
+	sudo touch /etc/dconf/db/gdm.d/01-banner-message
+	\end{verbatim}
 
-\item Open \texttt{/etc/dconf/profile/gdm} and add the following:
-\begin{verbatim}
-user-db:user
-system-db:gdm
-file-db:/usr/share/gdm/greeter-dconf-defaults
-\end{verbatim}
+  \item Open \texttt{/etc/dconf/profile/gdm} and add the following:
+	\begin{verbatim}
+	user-db:user
+	system-db:gdm
+	file-db:/usr/share/gdm/greeter-dconf-defaults
+	\end{verbatim}
 
-\item Open \texttt{/etc/dconf/db/gdm.d/01-banner-message} and add the following:
-\begin{verbatim}
-[org/gnome/login-screen]
-banner-message-enable=true
-banner-message-text='I have read & consent to terms in IS user agreement.'
-\end{verbatim}
+  \item Open \texttt{/etc/dconf/db/gdm.d/01-banner-message} and add the following:
+	\begin{verbatim}
+	[org/gnome/login-screen]
+	banner-message-enable=true
+	banner-message-text='I have read & consent to terms in IS user agreement.'
+	\end{verbatim}
 
-\item Reconfigure \texttt{gdm3} and \texttt{dconf}.
-\begin{verbatim}
-sudo dconf update
-sudo dpkg-reconfigure gdm3
-\end{verbatim}
+  \item Reconfigure \texttt{gdm3} and \texttt{dconf}.
+	\begin{verbatim}
+	sudo dconf update
+	sudo dpkg-reconfigure gdm3
+	\end{verbatim}
 
-\item Restart your computer for the changes to take effect.
+  \item Restart your computer for the changes to take effect.
 \end{enumerate}
 

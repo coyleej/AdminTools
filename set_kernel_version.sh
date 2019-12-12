@@ -1,5 +1,26 @@
 #!/bin/bash
 
+#===================================================================================
+#
+#          FILE:  set_kernel_version.sh
+#
+#   DESCRIPTION:  Updates kernel to the version specified in the newKernel variable
+#                 Originally developed to roll back to older kernels.
+#
+#       OPTIONS:  ---
+#  REQUIREMENTS:  ---
+#          BUGS:  ---
+#         NOTES:  ---
+#        AUTHOR:  Eleanor Coyle, ecoyle@azimuth-corp.com
+#       COMPANY:  Azimuth Corporation
+#       VERSION:  1.0
+#       CREATED:  2019-09-16
+#      REVISION:  2019-12-12
+#
+#===================================================================================
+
+#!/bin/bash
+
 newKernel="4.15.0-62-generic"
 grubFile="/etc/default/grub"
 grubCfg="/boot/grub/grub.cfg"

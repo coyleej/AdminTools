@@ -1,33 +1,33 @@
 \chapter{Slurm Adminstration} \label{ch:slurmAdministration}
 
 \section{Slurm admin commands} \label{sec:slurmadmin}
-These are the most common admin-specific commands \emph{in addition to the ones listed in section \ref{sec:queuecommands}}. (Those commands can be run with \texttt{sudo} to affect \emph{any} job.) For details, refer to \texttt{man <command>}.
+These are the most common admin-specific commands. Additionally, commands in section \ref{sec:queuecommands} can be run with \texttt{sudo} to affect \emph{any} job. For details, refer to \texttt{man <command>}.
 
 \begin{itemize}
-\item Setup, rebooting, and shutdown commands \\
-\addcontentsline{lot}{table}{Slurm setup and management}
-\begin{tabular}{l p{3.4in}}
-  \texttt{scontrol takedown}                 & Orders switch to backup controller \\
-  \texttt{scontrol reboot [ASAP] [Nodelist]} & Reboots nodes, see documentation \\
-  \texttt{scontrol shutdown [slurmctld]}     & Saves the current slurm state, then shuts down the daemons \\
-  \texttt{sacctmgr shutdown}                 & Shuts down the cluster \\
-  \texttt{slurmd -C}                         & Displays the physical configuration of a node when run on that specific node \\
-  \texttt{scontrol reconfigure}              & Makes running daemons re-read configuration files \\
-\end{tabular}
+  \item Setup, rebooting, and shutdown commands \\
+    \addcontentsline{lot}{table}{Slurm setup and management}
+    \begin{tabular}{l p{3.4in}}
+      \texttt{scontrol takedown}                 & Orders switch to backup controller \\
+      \texttt{scontrol reboot [ASAP] [Nodelist]} & Reboots nodes, see documentation \\
+      \texttt{scontrol shutdown [slurmctld]}     & Saves the current slurm state, then shuts down the daemons \\
+      \texttt{sacctmgr shutdown}                 & Shuts down the cluster \\
+      \texttt{slurmd -C}                         & Displays the physical configuration of a node when run on that specific node \\
+      \texttt{scontrol reconfigure}              & Makes running daemons re-read configuration files \\
+    \end{tabular}
 
-\item Selected management and accounting commands \\
-\addcontentsline{lot}{table}{Slurm management and accounting commands}
-\begin{tabular}{l p{3.4in}}
-  \texttt{sacct [options]} & Display accounting information for slurm jobs \\
-  \texttt{sacctmgr}                      & View and modify slurm account info \\
-  \texttt{sacctmgr add <entity> <specs>} & Add cluster, accounts, users; identical to \texttt{create} \\
-  \texttt{sacctmgr list <entity> [specs]} & Displays information about the specified entity\\
-  \texttt{sdiag}                         & Scheduling diagnostic tool \\
-  \texttt{smd}                           & Failure management suport tool \\
-  \texttt{sreport [options] [command]}   & Generates reports of job usage and cluster utilization \\
-  \texttt{sstat}                         & Display various status information \\
-  \texttt{sview}                         & Graphical user interface to view and modify slurm \\
-\end{tabular}
+  \item Selected management and accounting commands \\
+    \addcontentsline{lot}{table}{Slurm management and accounting commands}
+    \begin{tabular}{l p{3.4in}}
+      \texttt{sacct [options]} & Display accounting information for slurm jobs \\
+      \texttt{sacctmgr}                      & View and modify slurm account info \\
+      \texttt{sacctmgr add <entity> <specs>} & Add cluster, accounts, users; identical to \texttt{create} \\
+      \texttt{sacctmgr list <entity> [specs]} & Displays information about the specified entity\\
+      \texttt{sdiag}                         & Scheduling diagnostic tool \\
+      \texttt{smd}                           & Failure management suport tool \\
+      \texttt{sreport [options] [command]}   & Generates reports of job usage and cluster utilization \\
+      \texttt{sstat}                         & Display various status information \\
+      \texttt{sview}                         & Graphical user interface to view and modify slurm \\
+    \end{tabular}
 
 %\item User management commands (beyond commands in the previous section)\\
 %\addcontentsline{lot}{table}{Slurm user management}
@@ -38,20 +38,23 @@ These are the most common admin-specific commands \emph{in addition to the ones 
 %lsload |grep 'Hostname\|<partition>'
 %\end{tabular}
 
-\item Daemon commands: \texttt{slurmctld}, \texttt{slurmd}, and \texttt{slurmdbd} are the master/control, compute, and database daemons, respectively. They may need to be restarted if configuration files are modified (section \ref{sec:slurmconfig}). \\
+  \item Daemon commands: \texttt{slurmctld}, \texttt{slurmd}, and \texttt{slurmdbd} are the master/control, compute, and database daemons, respectively. They may need to be restarted if configuration files are modified (section \ref{sec:slurmconfig}). \\
 
-\addcontentsline{lot}{table}{Slurm daemons}
-\begin{tabular}{l p{3.8in}}
-  \texttt{systemctld enable <daemon>}  & Enable to start on boot; will not start a stopped daemon \\
-  \texttt{systemctld disable <daemon>} & Disable so that it will not start; will not stop a running daemon \\
-  \texttt{systemctld start <daemon>}   & Starts daemon manually, does not enable the daemon \\
-  \texttt{systemctld stop <daemon>}    & Only use \emph{if the cluster is fully idle} (you should default to \texttt{scontrol shutdown}): this stops daemon manually \emph{without saving the current slurm state} and does not disable the daemon \\
-  \texttt{scontrol shutdown [slurmctld]} & Saves the current slurm state before stopping all slurm daemons (\texttt{slurmctld} option only shuts down the control daemons) \\
-  \texttt{systemctld status <daemon>}  & Reports status of daemon \\
-  \texttt{<daemon> -Dvvvv}             & Manually starts the daemon; ``D" runs in the foreground and ``v"s (can have 0 to 7 ``v"s) indicates desired verbosity \\
-\end{tabular}
-
+    \addcontentsline{lot}{table}{Slurm daemons}
+    \begin{tabular}{l p{3.8in}}
+      \texttt{scontrol shutdown [slurmctld]} & Saves the current slurm state before stopping all slurm daemons (\texttt{slurmctld} option only shuts down the control daemons) \\
+      \texttt{systemctld enable <daemon>}  & Enable to start on boot; does not start the daemon \\
+      \texttt{systemctld disable <daemon>} & Disable so that it will not start; does not stop the daemon \\
+      \texttt{systemctld start <daemon>}   & Starts daemon manually, does not enable the daemon \\
+      \texttt{systemctld stop <daemon>}    & Only use \emph{if the cluster is fully idle} (you should default to \texttt{scontrol shutdown}): this stops daemon manually \emph{without saving the current slurm state} and does not disable the daemon \\
+      \texttt{systemctld status <daemon>}  & Reports status of daemon \\
+      \texttt{<daemon> -Dvvvv}             & Manually starts the daemon; ``D" runs in the foreground and ``v" (can have 0 to 7 ``v"s) indicates desired verbosity \\
+    \end{tabular}
 \end{itemize}
+
+\section{Slurm node states} \label{sec:slurmnodestate}
+
+If the node is behaving properly, the node status should be \texttt{idle}, \texttt{mix}, or \texttt{alloc}, depending on the present usage. If this is not the case, see section \ref{subsec:nodeissues}.
 
 \section{Adjusting configuration files} \label{sec:slurmconfig}
 
@@ -85,21 +88,24 @@ Default: \texttt{/usr/lib/x86\_64-linux-gnu/slurm-wlm}
 
 \section{Reboot and shutdown nodes} \label{sec:slurmpowercycle}
 
+\subsection{Slurm downtime behavior} \label{subsec:slurmdowntime}
+Be mindful of your configured SlurmdTimeout and SlurmctldTimeout values. If the Slurm daemons are down for longer than the specified timeout (currently 5 minutes), nodes will be marked DOWN and their jobs killed. Either increase the timeout values during an upgrade or ensure that the compute node slurmd are not down for longer than SlurmdTimeout. 
+
 \subsection{Reboot} \label{subsec:slurmreboot}
 
 Nodes may need to be rebooted after firmware or kernel upgrades. Use the \texttt{RebootProgram} in \texttt{slurm.conf} to reboot nodes as they become idle. Be mindful of slurm downtime behavior (section \ref{subsec:slurmdowntime}).
 
 \subsubsection{Controller reboot} \label{subsec:rebootSlurmControl}
 
-Because of how our system is set up, you must complete the setup in section \ref{subsec:SetupBackupTakeover}. If you do not set this up, there is a high probability that you will kill all jobs when you reboot. (Note: this is dependent on the specific setup. On other systems the switch to the backup controller may be automatic and the following will not apply.)
-
-The procedure depends on the controller being rebooted:
+\emph{Because of how MARVEL is set up}, you \emph{must} complete the setup in section \ref{subsec:SetupBackupTakeover} first or you risk killing all jobs. (Note: On other systems the switch to the backup controller may be automatic and the following will not apply.) On MARVEL, the reboot procedure depends on which controller being rebooted:
 
 \begin{itemize}
   \item Primary controller:
 
     \begin{enumerate}
-      \item Transfer the state to the backup controller, manually transfer the state, then stop \texttt{slurmctld}. This is automated in the \texttt{slurm\_transfer\_control.sh} script.
+      \item \emph{Make sure that \emph{\texttt{slurmctld}} is running on the \textbf{backup} controller!}
+
+      \item Transfer the state to the proper location on the backup controller, then stop \texttt{slurmctld} on the primary controller. This process is automated in the \texttt{slurm\_transfer\_control.sh} script. (See section \ref{subsec:SetupBackupTakeover} for setup instructions and an explanation of the script.)
 
         If you are in the MiniClusterTools directory, you can call it with 
 
@@ -111,18 +117,18 @@ The procedure depends on the controller being rebooted:
 
         or use your aliased command.
 
-      \item Follow the compute node reboot procedure or the normal shutdown procedure (\ref{subsec:slurmshutdown}).
+      \item Follow the compute node reboot procedure or the slurm shutdown procedure.
 
-      \item The admin user must log into the primary controller to start \texttt{slurmctld}. (\texttt{slurmctld} is disabled, and the start command is located in the admin user's \texttt{.bashrc} file.)
+      \item The admin user must log into the primary controller to fetch the current slurm state from the backup controller and start \texttt{slurmctld}. (In our system, this is done with the admin user's \texttt{.bashrc} file.)
 
     \end{enumerate}
 
   \item Backup controller: 
   
     \begin{enumerate}
-      \item \emph{Make sure that \emph{\texttt{slurmctld}} is running on the primary controller!} The primary controller will resume control as soon as \texttt{slurmctld} starts. In our setup, the admin \emph{must} log into the primary controller to start \texttt{slurmctld}. 
+      \item \emph{Make sure that \emph{\texttt{slurmctld}} is running on the \textbf{primary} controller!}
 
-      \item Follow the compute node reboot procedure or the normal shutdown procedure (\ref{subsec:slurmshutdown}).
+      \item Follow the compute node reboot procedure or the slurm shutdown procedure.
 
       \item The admin user must log into the backup controller to start \texttt{slurmctld}. (\texttt{slurmctld} is disabled, and the start command is located in the admin user's \texttt{.bashrc} file.)
     \end{enumerate}
@@ -158,9 +164,6 @@ If you want to shut down the primary or backup controller without killing simula
 Shut down the slurm daemons with \texttt{scontrol shutdown [slurmctld]}. If the \texttt{slurmctld} option is used, only the control daemons will be shutdown. The benefit of \texttt{scontrol} over \texttt{systemctl} is that the former will save the current slurm state before shutting down the daemons.
 
 Shut down the cluster with \texttt{sacctmgr shutdown}. 
-
-\subsection{Slurm downtime behavior} \label{subsec:slurmdowntime}
-Be mindful of your configured SlurmdTimeout and SlurmctldTimeout values. If the Slurm daemons are down for longer than the specified timeout (currently 5 minutes), nodes will be marked DOWN and their jobs killed. Either increase the timeout values during an upgrade or ensure that the compute node slurmd are not down for longer than SlurmdTimeout. 
 
 \section{Backup and restore database} \label{sec:slurmDBbackup}
 

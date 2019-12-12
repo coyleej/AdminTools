@@ -8,6 +8,8 @@
 #SBATCH --mem=10
 #SBATCH --partition=debug
 #SBATCH --output=%x.o%j
+#SBATCH --mail-user=coyleej
+#SBATCH --mail-type=BEGIN,END,FAIL
 
 echo "Hello World!"
 echo "running job"

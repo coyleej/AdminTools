@@ -15,7 +15,7 @@
 #       COMPANY:  Azimuth Corporation
 #       VERSION:  1.0
 #       CREATED:  2019-02-27
-#      REVISION:  2019-08-06
+#      REVISION:  2019-12-12
 #
 #===================================================================================
 
@@ -117,7 +117,7 @@ echo ""
 echo "NOTE: All required dependencies have been downloaded with apt or git"
 echo ""
 echo "NOTE: Pybind11, OpenBLAS, and S4 have beeen downloaded but not installed"
-echo "They must be installed manually."
+echo "They must be compiled manually."
 echo "MANTIS is useless without these three packages!"
 echo ""
 

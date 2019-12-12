@@ -1,48 +1,48 @@
-Ubuntu by default will automatically download and install security updates but not security upgrades. We will use \texttt{unattended-upgrades} to automate the latter. I recommend automating security upgrades and checking for other upgrades manually. \texttt{apt} may attempt to install or remove other packages, which can cause dependency issues (section \ref{subsec:brokenpackages}). Security upgrades are less likely to cause problems.
+Ubuntu by default will automatically download and install security updates but not security upgrades. We will use \texttt{unattended-upgrades} to automate the latter. It's preinstalled in 18.04 and can be configured in a single command. 
 
-Automatic upgrades must be set up manually. There are \href{https://help.ubuntu.com/community/AutomaticSecurityUpdates}{several ways to do this}, but we will use \texttt{unnattended-upgrades}. It's preinstalled and can be configured in two different ways (both are automated in the \texttt{set\_unattended\_upgrades.sh} file):
+Run \texttt{sudo dpkg-reconfigure unattended-upgrades} and follow the prompts. The whole process takes less than a minute. Detailed documentation can be found \href{https://help.ubuntu.com/lts/serverguide/automatic-updates.html}{here}.
 
-\begin{itemize}
-\item Run \texttt{sudo dpkg-reconfigure unattended-upgrades} and follow the prompts. The whole process should take about a minute. Automate all upgrades if you want but be aware of the warning above. Detailed documentation can be found \href{https://help.ubuntu.com/lts/serverguide/automatic-updates.html}{here}.
-
-\item Configure it manually by editing \texttt{/etc/apt/apt.conf.d/50unattended-upgrades}. The setup for our servers is described below. Additional details can be found at these locations:
-\href{https://libre-software.net/ubuntu-automatic-updates/}{1}, 
-\href{https://www.howtoforge.com/tutorial/how-to-setup-automatic-security-updates-on-ubuntu-1604/}{2}, 
-\href{https://linoxide.com/ubuntu-how-to/enable-disable-unattended-upgrades-ubuntu-16-04/}{3}, and 
-\href{https://www.linuxbabe.com/ubuntu/automatic-security-update-unattended-upgrades-ubuntu-18-04}{4}. 
-%1: Best step-by-step instructions 
-%2: Good overview
-%3:Ok guide (skip SMTP relay section)
-
-	\begin{enumerate}
-	\item Install \texttt{bsd-mailx}. In the installation process, pick ``local only" and use ``<hostname>" as the mail server host.
-
-	\item Navigate to \texttt{/etc/apt/apt.conf.d/}.
-
-	\item Copy \texttt{50unattended-upgrades} to \texttt{50unattended-upgrades.bak}. Open \texttt{50unattended-upgrades} and change the following:
-		\begin{enumerate}
-		\item Uncomment \texttt{Unattended-Upgrade::Mail} and change the address to \texttt{<admin\_account>}. 
-
-		\item Set it to send you mail only when there are errors. (The default is sending mail every time it updates.) Messages are placed in \texttt{/var/mail}. Uncomment the following: \\
-		\texttt{Unattended-Upgrade::MailOnlyOnError "true"}
-			
-		\item All other items are left as the defaults.
-		\end{enumerate}
-
-	\item Copy \texttt{20auto-upgrades} to \texttt{20auto-upgrades.bak}. Open \texttt{20auto-upgrades} and make sure that it contains the following (time intervals are in days):
-		\begin{verbatim}
-		APT::Periodic::Update-Package-Lists "1";
-		APT::Periodic::Download-Upgradeable-Packages "1";
-		APT::Periodic::AutocleanInterval "7";
-		APT::Periodic::Unattended-Upgrade "1";
-		\end{verbatim}
-
-	\item Test: \texttt{sudo unattended-upgrades --dry-run --debug}
-
-	\item If the dry run worked: \texttt{sudo rm *.bak}
-	\end{enumerate}
-
-\end{itemize}
+%%%% 
+%Removed the manual setup from my script. Updates to the unattended-upgrades package made some of this irrelevant, and I never got the automated setup properly working in the first place.
+%%%%
+%\item Configure it manually by editing \texttt{/etc/apt/apt.conf.d/50unattended-upgrades}. The setup for our servers is described below. Additional details can be found at these locations:
+%\href{https://libre-software.net/ubuntu-automatic-updates/}{1}, 
+%\href{https://www.howtoforge.com/tutorial/how-to-setup-automatic-security-updates-on-ubuntu-1604/}{2}, 
+%\href{https://linoxide.com/ubuntu-how-to/enable-disable-unattended-upgrades-ubuntu-16-04/}{3}, and 
+%\href{https://www.linuxbabe.com/ubuntu/automatic-security-update-unattended-upgrades-ubuntu-18-04}{4}. 
+%%1: Best step-by-step instructions 
+%%2: Good overview
+%%3:Ok guide (skip SMTP relay section)
+%
+%	\begin{enumerate}
+%	\item Install \texttt{bsd-mailx}. In the installation process, pick ``local only" and use ``<hostname>" as the mail server host.
+%
+%	\item Navigate to \texttt{/etc/apt/apt.conf.d/}.
+%
+%	\item Copy \texttt{50unattended-upgrades} to \texttt{50unattended-upgrades.bak}. Open \texttt{50unattended-upgrades} and change the following:
+%		\begin{enumerate}
+%		\item Uncomment \texttt{Unattended-Upgrade::Mail} and change the address to \texttt{<admin\_account>}. 
+%
+%		\item Set it to send you mail only when there are errors. (The default is sending mail every time it updates.) Messages are placed in \texttt{/var/mail}. Uncomment the following: \\
+%		\texttt{Unattended-Upgrade::MailOnlyOnError "true"}
+%			
+%		\item All other items are left as the defaults.
+%		\end{enumerate}
+%
+%	\item Copy \texttt{20auto-upgrades} to \texttt{20auto-upgrades.bak}. Open \texttt{20auto-upgrades} and make sure that it contains the following (time intervals are in days):
+%		\begin{verbatim}
+%		APT::Periodic::Update-Package-Lists "1";
+%		APT::Periodic::Download-Upgradeable-Packages "1";
+%		APT::Periodic::AutocleanInterval "7";
+%		APT::Periodic::Unattended-Upgrade "1";
+%		\end{verbatim}
+%
+%	\item Test: \texttt{sudo unattended-upgrades --dry-run --debug}
+%
+%	\item If the dry run worked: \texttt{sudo rm *.bak}
+%	\end{enumerate}
+%
+%\end{itemize}
 
 If things ever go wrong, you may need to check the log files:
 
@@ -51,6 +51,7 @@ If things ever go wrong, you may need to check the log files:
 	\texttt{/var/log/apt}
 
 By default \texttt{unattended-upgrades} runs randomly within a twelve hour block to smooth out demand on the mirrors. This is fine for our purposes and does not need modification.
+
 
 %	\begin{enumerate}
 %	\item To view the default values: 

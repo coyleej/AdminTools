@@ -1,89 +1,89 @@
 This setup is automated in the \texttt{sshd\_setup.sh} file from \href{https://github.com/coyleej/MiniClusterTools}{MiniClusterTools repository}. 
 
 \begin{enumerate}
-\item Install \texttt{fail2ban} and \texttt{openssh-server} with \texttt{apt}. \texttt{fail2ban} will ban IPs that exceed 5 failed tries in 10 minutes. (Never modify \texttt{/etc/fail2ban/jail.conf}! Copy it into \texttt{jail.local} and modify that.)
+  \item Install \texttt{fail2ban} and \texttt{openssh-server} with \texttt{apt}. \texttt{fail2ban} will ban IPs that exceed 5 failed tries in 10 minutes. (Never modify \texttt{/etc/fail2ban/jail.conf}! Copy it into \texttt{jail.local} and modify that.)
 
-\item We're required to display \href{https://www.stigviewer.com/stig/firewall/2015-09-18/finding/V-3013}{a banner message (option A)} on the servers prior to login. It will be activated in a few steps. For now, we're just creating it.
+  \item We're required to display \href{https://www.stigviewer.com/stig/firewall/2015-09-18/finding/V-3013}{a banner message (option A)} on the servers prior to login. It will be activated in a few steps. For now, we're just creating it.
 
-	\begin{enumerate}
-		\item Create the login banner file: 
+    \begin{enumerate}
+      \item Create the login banner file: 
 
-			\texttt{sudo touch /etc/ssh/sshd\_banner}
+        \texttt{sudo touch /etc/ssh/sshd\_banner}
 
-		\item Add the warning found in the \href{https://github.com/coyleej/MiniClusterTools/tree/master/files}{MiniClusterTools repo}. 
-	\end{enumerate}
+      \item Add the warning found in the \href{https://github.com/coyleej/MiniClusterTools/tree/master/files}{MiniClusterTools repo}. 
+      \end{enumerate}
 
-\item Open \href{https://linux.die.net/man/5/sshd_config}{\texttt{/etc/ssh/sshd\_config}} and change some \texttt{ssh} settings.
+  \item Open \href{https://linux.die.net/man/5/sshd_config}{\texttt{/etc/ssh/sshd\_config}} and change some \texttt{ssh} settings.
 
-	The convention in this file is to have default settings commented out and to only uncomment something if you change the value! Note: We are making an exception to this convention for values the higher ups have explicitly requested.
+    The convention in this file is to have default settings commented out and to only uncomment something if you change the value! Note: We are making an exception to this convention for values the higher ups have explicitly requested.
 
-	\begin{enumerate}
-	\item Specify that all \texttt{ssh} access to the servers must use protocol 2 by adding the following right below the line \texttt{\#Port 22}. (\href{https://www.openssh.com/txt/release-7.6}{Completely unnecessary for \texttt{openssh 7.6+}}, but including anyway.)
+    \begin{enumerate}
+      \item Specify that all \texttt{ssh} access to the servers must use protocol 2 by adding the following right below the line \texttt{\#Port 22}. (\href{https://www.openssh.com/txt/release-7.6}{Completely unnecessary for \texttt{openssh 7.6+}}, but including anyway.)
 
-		\texttt{Protocol 2}
+        \texttt{Protocol 2}
 
-	\item Change \texttt{LoginGraceTime} to \texttt{1m}
+      \item Change \texttt{LoginGraceTime} to \texttt{1m}
 
-	This changes the allowable time between typing \texttt{ssh <server>} and entering a password.
+        This changes the allowable time between typing \texttt{ssh <server>} and entering a password.
 
-	\item Change \texttt{PermitRootLogin} to \texttt{no}
+      \item Change \texttt{PermitRootLogin} to \texttt{no}
 
-	\item Uncomment \texttt{StrictModes} to \texttt{yes} (default value)
+      \item Uncomment \texttt{StrictModes} to \texttt{yes} (default value)
 
-	\item Change \texttt{MaxAuthTries} to \texttt{3}
+      \item Change \texttt{MaxAuthTries} to \texttt{3}
 
-	This allows three password attempts after typing \texttt{ssh <server>} before resetting.
+        This allows three password attempts after typing \texttt{ssh <server>} before resetting.
 
-	\item Restrict who is allowed to remotely access the server. Add these lines below \texttt{MaxSessions}:
-	\begin{verbatim}
-	DenyUsers root
-	DenyGroups root
-	AllowGroups users slurm 
-	\end{verbatim}
+      \item Restrict who is allowed to remotely access the server. Add these lines below \texttt{MaxSessions}:
+		\begin{verbatim}
+		DenyUsers root
+		DenyGroups root
+		AllowGroups users slurm 
+		\end{verbatim}
 
-	Only groups \texttt{users} and \texttt{slurm} are able to \texttt{ssh} or \texttt{sftp}. All (human) users should be placed in group \texttt{users} when creating their accounts! See chapter \ref{ch:users} for managing group membership.
+        Only groups \texttt{users} and \texttt{slurm} are able to \texttt{ssh} or \texttt{sftp}. All (human) users and the vulnerability scanner user should be placed in group \texttt{users} when creating their accounts! See chapter \ref{ch:users} for managing group membership.
 
-	Technically the \texttt{Deny\dots} statements are redundant. \texttt{root} is already forbidden from using \texttt{ssh} because its password is disabled and locked.
+        Technically the \texttt{Deny\dots} statements are redundant. \texttt{root} is already forbidden from using \texttt{ssh} because its password is disabled and locked.
 
-	\item Change \texttt{IgnoreUserKnownHosts} to \texttt{yes}
+      \item Change \texttt{IgnoreUserKnownHosts} to \texttt{yes}
 
-	\item Uncomment \texttt{PermitEmptyPasswords} to \texttt{no} (default value)
+      \item Uncomment \texttt{PermitEmptyPasswords} to \texttt{no} (default value)
 
-	\item Uncomment \texttt{X11Forwarding} to \texttt{yes} (default value)
+      \item Uncomment \texttt{X11Forwarding} to \texttt{yes} (default value)
 
-	\item Have it print the last login for \texttt{\$USER} (NOTE: While the convention would suggest that \texttt{yes} is the default, someone typo'd. The default is actually \texttt{no}.)
+      \item Have it print the last login for \texttt{\$USER} (NOTE: While the convention would suggest that \texttt{yes} is the default, someone typo'd. The default is actually \texttt{no}.)
 
-		\texttt{PrintLastLog yes}
+        \texttt{PrintLastLog yes}
 
-	\item Uncomment \texttt{PermitUserEnvironment} to \texttt{no} (default value)
+      \item Uncomment \texttt{PermitUserEnvironment} to \texttt{no} (default value)
 
-	\item Uncomment \texttt{Compression} to \texttt{delayed} (default value)
+      \item Uncomment \texttt{Compression} to \texttt{delayed} (default value)
 
-	\item Change \texttt{ClientAliveInterval} to \texttt{600}
+      \item Change \texttt{ClientAliveInterval} to \texttt{600}
 
-	\item Change \texttt{ClientAliveCountMax} to \texttt{1}
+      \item Change \texttt{ClientAliveCountMax} to \texttt{1}
 
-	\item Display the banner text in between typing \texttt{ssh <user>@<server>} and password entry
+      \item Display the banner text in between typing \texttt{ssh <user>@<server>} and password entry
 
-		\texttt{Banner /etc/ssh/sshd\_banner}
+        \texttt{Banner /etc/ssh/sshd\_banner}
 
-	\item \texttt{UsePrivilegeSeparation sandbox} \emph{is \href{https://www.openssh.com/txt/release-7.5}{depricated starting from \emph{\texttt{openssh 7.5}}!}} Privilege separation is now mandatory. Because it is depricated and results in a warning when checking the configuration, we are not adding this line to the config file.
+      \item \texttt{UsePrivilegeSeparation sandbox} \emph{is \href{https://www.openssh.com/txt/release-7.5}{depricated starting from \emph{\texttt{openssh 7.5}}!}} Privilege separation is now mandatory. Because it is depricated and results in a warning when checking the configuration, we are not adding this line to the config file.
 
-	\end{enumerate}
+    \end{enumerate}
 
-\item Check that \texttt{sshd\_config} is valid and error-free:
+  \item Check that \texttt{sshd\_config} is valid and error-free:
 
-	\texttt{sudo sshd -t}
+    \texttt{sudo sshd -t}
 
-\item Reload the daemon: 
+   \item Reload the daemon: 
 
-	\texttt{sudo systemctl restart sshd}
+    \texttt{sudo systemctl restart sshd}
 
-\item The code will remind you to manually add users to the \texttt{ssh}-approved group:
+  \item The code will remind you to manually add users to the \texttt{ssh}-approved group:
 
-	\texttt{sudo usermod -a -G <ssh-users> <username>}
+    \texttt{sudo usermod -a -G <ssh-users> <username>}
 
-\item Test by logging in again.
+  \item Test by logging in again.
 
 \end{enumerate}
 

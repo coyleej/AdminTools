@@ -2,15 +2,13 @@
 
 \textbf{\emph{This setup works on Ubuntu 18.04 and Ubuntu Server 18.04.}}
 
-SchedMD recommends a separate database server if possible. It may be on the same server as \texttt{slurmctld}, but this may impact performance. You should consider optimizing the database performance by mounting the MariaDB or MySQL database directory on a dedicated high-speed file system. Ideally this would be a PCIe SSD disk drive (e.g.\ Intel SSD P3700 series or Kingston E1000 series), but SSD SAS/SATA will also work. Drives must be qualified for high-volume random small read/write operations, and should be built with the Non-Volatile Memory Express (NVMe) storage interface standard for reliability and performance. A disk size of 200 GB or 400 GB should be sufficient. Consider installing 2 disk drives in a RAID-1 configuration.
-
 The following will be installed in this setup guide:
 
 \begin{itemize}
-\item MPI : OpenMPI version 2
-\item Slurm 17.11.2-1
-\item Authentication and digital signatures: MUNGE
-\item Database : MariaDB
+  \item MPI: OpenMPI version 2
+  \item Slurm 17.11.2-1 (slurmctld, slurmd, slurmdbd)
+  \item Authentication and digital signatures: MUNGE
+  \item Database: MariaDB
 \end{itemize}
 
 \section{Reference materials} \label{sec:slurmguides}
@@ -32,13 +30,13 @@ This guide was constructed from the following references and my own experiences:
 %Check for hyperthreading on your system with \texttt{lscpu} or \texttt{lscpu | grep "per core"}.
 
 From the \href{https://slurm.schedmd.com/faq.html}{slurm documentation} on hyperthreading:
-	\begin{quotation}
-	If your nodes are configured with hyperthreading, then a CPU is equivalent to a hyperthread. Otherwise a CPU is equivalent to a core. You can determine if your nodes have more than one thread per core using the command ``scontrol show node" and looking at the values of ``ThreadsPerCore".
+  \begin{quotation}
+    If your nodes are configured with hyperthreading, then a CPU is equivalent to a hyperthread. Otherwise a CPU is equivalent to a core. You can determine if your nodes have more than one thread per core using the command ``scontrol show node" and looking at the values of ``ThreadsPerCore".
 
-	Note that even on systems with hyperthreading enabled, the resources will generally be allocated to jobs at the level of a core (see NOTE below). Two different jobs will not share a core except through the use of a partition OverSubscribe configuration parameter. For example, a job requesting resources for three tasks on a node with ThreadsPerCore=2 will be allocated two full cores. Note that Slurm commands contain a multitude of options to control resource allocation with respect to base boards, sockets, cores and threads.
+    Note that even on systems with hyperthreading enabled, the resources will generally be allocated to jobs at the level of a core (see NOTE below). Two different jobs will not share a core except through the use of a partition OverSubscribe configuration parameter. For example, a job requesting resources for three tasks on a node with ThreadsPerCore=2 will be allocated two full cores. Note that Slurm commands contain a multitude of options to control resource allocation with respect to base boards, sockets, cores and threads.
 
-	(NOTE: An exception to this would be if the system administrator configured SelectTypeParameters=CR\_CPU and each node's CPU count without its socket/core/thread specification. In that case, each thread would be independently scheduled as a CPU. This is not a typical configuration.)
-	\end{quotation}
+    (NOTE: An exception to this would be if the system administrator configured SelectTypeParameters=CR\_CPU and each node's CPU count without its socket/core/thread specification. In that case, each thread would be independently scheduled as a CPU. This is not a typical configuration.)
+  \end{quotation}
 
 If \texttt{SelectTypeParameters} is set to \texttt{CR\_CPU} or \texttt{CP\_CPU\_Memory}, slurm will treat each thread as a CPU and completely disregard which core a thread is on. If it is set to \texttt{CR\_Core} or \texttt{CR\_Core\_Memory}, slurm can assign multiple threads to a core but will not assign multiple jobs to the same core. If it is set to \texttt{CR\_ONE\_TASK\_PER\_CORE}, slurm assigns one task per core regardless of the number of threads available. 
 
@@ -59,349 +57,346 @@ If \texttt{SelectTypeParameters} is set to \texttt{CR\_CPU} or \texttt{CP\_CPU\_
 \section{Basic Slurm set up} \label{sec:basicslurm}
 
 \begin{enumerate}
-\item If you intend to set up a database on its own high speed drive, mount the drive now. % Default database location is /var/lib/mysql
+  \item If you intend to set up a database on its own high speed drive, mount the drive now. % Default database location is /var/lib/mysql
 
 %%%%%%%% INSTALL REQUIRED PACKAGES %%%%%%%%
-\item Make sure that OpenMPI is installed. If not, install it with
+  \item Make sure that OpenMPI is installed. If not, install it with
 
-	\texttt{sudo apt install libopenmpi2 libopenmpi-dev openmpi-common openmpi-doc}
+    \texttt{sudo apt install libopenmpi2 libopenmpi-dev openmpi-common openmpi-doc}
 
-\item Download the \href{https://github.com/coyleej/MiniClusterTools}{MiniClusterTools repo}  if you haven't already. It contains a slurm installation script.
+  \item Download the \href{https://github.com/coyleej/MiniClusterTools}{MiniClusterTools repo} if you haven't already. It contains a slurm installation script.
 
-	\texttt{git clone https://github.com/coyleej/MiniClusterTools.git}
+    \texttt{git clone https://github.com/coyleej/MiniClusterTools.git}
 
 %%%%%%%% BASH SCRIPT %%%%%%%%
-\item Run \texttt{install\_slurm.sh}. It automates much of the setup. The following explains what it does.
+  \item Run \texttt{install\_slurm.sh}. It automates much of the setup. The following explains what it does.
 
-	\texttt{bash install\_slurm.sh}
+    \texttt{bash install\_slurm.sh}
 
-	\begin{enumerate}
-	\item Set five variables for the cluster name, controller information, and backup controller. If there is no backup controller, leave \texttt{backupname="NULL"}. The script will handle this automatically.
+    \begin{enumerate}
+      \item Set five variables for the cluster name, controller information, and backup controller. If there is no backup controller, leave \texttt{backupname="NULL"}. The script will handle this automatically.
 
-	\item Create Munge user with \texttt{uid} and \texttt{gid} of 399. (Can be any \emph{unused} value between SYS\_UID\_MIN and SYS\_UID\_MAX, which are defined in \texttt{/etc/login.defs}). 
+      \item Create Munge user with \texttt{uid} and \texttt{gid} of 399. (Can be any \emph{unused} value between SYS\_UID\_MIN and SYS\_UID\_MAX, which are defined in \texttt{/etc/login.defs}). 
 
-		\texttt{mungeUID=399} \\
-		\texttt{sudo groupadd -g \$mungeUID munge} \\
-		\texttt{sudo useradd -r -u \$mungeUID -g \$mungeUID munge} \\
-		\texttt{sudo usermod -d /nonexistent munge}
+        \texttt{mungeUID=399} \\
+        \texttt{sudo groupadd -g \$mungeUID munge} \\
+        \texttt{sudo useradd -r -u \$mungeUID -g \$mungeUID munge} \\
+        \texttt{sudo usermod -d /nonexistent munge}
 
-	\item Make sure the system clock is set to the proper timezone and that your system clock is correct:
+      \item Make sure the system clock is set to the proper timezone and that your system clock is correct:
 
-		\texttt{sudo timedatectl set-timezone America/New\_York} \\
-		\texttt{timedatectl}
+        \texttt{sudo timedatectl set-timezone America/New\_York} \\
+        \texttt{timedatectl}
 
-	\item Check that \texttt{nvidia-driver-430} or newer is installed so that slurm can find the GPUs.
+      \item Check that \texttt{nvidia-driver-430} or newer is installed so that slurm can find the GPUs.
 
-		\begin{enumerate}
-		\item Check that we're using the Ubuntu \texttt{graphics-drivers} PPA. If we aren't:
+        \begin{enumerate}
+          \item Check that we're using the Ubuntu \texttt{graphics-drivers} PPA. If we aren't:
 
-			\texttt{sudo add-apt-repository ppa:graphics-drivers/ppa} \\
-			\texttt{sudo apt update}
+            \texttt{sudo add-apt-repository ppa:graphics-drivers/ppa} \\
+            \texttt{sudo apt update}
 
-		\item Use \texttt{apt} to purge anything older than \texttt{nvidia-driver-430}.
+          \item Use \texttt{apt} to purge anything older than \texttt{nvidia-driver-430}.
 
-		\item Use \texttt{apt} to install \texttt{nvidia-driver-430} if you purged an older driver.
+          \item Use \texttt{apt} to install \texttt{nvidia-driver-430} if you purged an older driver.
 
-		\end{enumerate}
+        \end{enumerate}
 
-	\item Install OpenMPI if it is not presently installed:
+      \item Install OpenMPI if it is not presently installed:
 
-		\texttt{sudo apt install libopenmpi2 libopenmpi-dev openmpi-common openmpi-doc}
+        \texttt{sudo apt install libopenmpi2 libopenmpi-dev openmpi-common openmpi-doc}
 
-	\item Install MUNGE, SLURM, MySQL, MariaDB, and cgroup-tools: \\
-		\texttt{apt install munge libmunge-dev libpam-slurm slurmd slurmdbd slurm-wlm-doc \\ cgroup-tools mariadb-common mariadb-server} % mysql-common mysql-server}
+      \item Install MUNGE, SLURM, MySQL, MariaDB, and cgroup-tools: \\
+        \texttt{apt install munge libmunge-dev libpam-slurm slurmd slurmdbd slurm-wlm-doc \\ cgroup-tools mariadb-common mariadb-server} % mysql-common mysql-server}
 
-	\item If the node in question is the control node or the backup control node:
+      \item If the node in question is the control node or the backup control node:
 
-		\texttt{sudo apt install slurmctld slurm-wlm slurmdbd}
+        \texttt{sudo apt install slurmctld slurm-wlm slurmdbd}
 
-		Otherwise:
+        Otherwise:
 
-		\texttt{sudo apt install slurm-client} 
+        \texttt{sudo apt install slurm-client} 
 
-	\item User prompts will gather some information on GPUs.
+      \item User prompts will gather some information on GPUs.
 
 %%%%%%%% CONTROL NODE CONFIGURATION %%%%%%%%
-	\item Configure the control node, if applicable. 
+      \item Configure the control node, if applicable. 
 
-		\begin{enumerate}
-		\item Make sure that \texttt{/var/spool/slurmctld/} and \texttt{/var/log/slurm-llnl/} exist. If not, create them with \texttt{mkdir}.
+        \begin{enumerate}
+          \item Make sure that \texttt{/var/spool/slurmctld/} and \texttt{/var/log/slurm-llnl/} exist. If not, create them with \texttt{mkdir}.
 
-		\item Make sure that slurm is the owner of these directories. If not, use \texttt{chown slurm: <dirname>}.
+          \item Make sure that slurm is the owner of these directories. If not, use \texttt{chown slurm: <dirname>}.
 
-		\item Make sure that the permissions on these directories are set to \texttt{755}. If not, use \texttt{chmod}.
+          \item Make sure that the permissions on these directories are set to \texttt{755}. If not, use \texttt{chmod}.
 
-		\item Check that \texttt{/var/log/slurm-llnl/slurmctld.log} exists and is owned by slurm. Otherwise, create it using \texttt{touch} and \texttt{chown}.
+          \item Check that \texttt{/var/log/slurm-llnl/slurmctld.log} exists and is owned by slurm. Otherwise, create it using \texttt{touch} and \texttt{chown}.
 
-		\item Create the Linux default accounting file.
+          \item Create the Linux default accounting file.
 
-			\texttt{sudo touch /var/log/slurm-llnl/slurm\_jobacct.log} \\
-			\texttt{sudo chown slurm: /var/log/slurm-llnl/slurm\_jobacct.log } \\
-			\texttt{sudo touch /var/log/slurm-llnl/slurm\_jobcomp.log} \\
-			\texttt{sudo chown slurm: /var/log/slurm-llnl/slurm\_jobcomp.log}
+            \texttt{sudo touch /var/log/slurm-llnl/slurm\_jobacct.log} \\
+            \texttt{sudo chown slurm: /var/log/slurm-llnl/slurm\_jobacct.log } \\
+            \texttt{sudo touch /var/log/slurm-llnl/slurm\_jobcomp.log} \\
+            \texttt{sudo chown slurm: /var/log/slurm-llnl/slurm\_jobcomp.log}
 
-		\end{enumerate}
+        \end{enumerate}
 
 %%%%%%%% COMPUTE NODE CONFIGURATION %%%%%%%%
-	\item Configure the compute nodes. See \href{https://wiki.fysik.dtu.dk/niflheim/Slurm_configuration#id12}{this site} for further details. 
+      \item Configure the compute nodes. See \href{https://wiki.fysik.dtu.dk/niflheim/Slurm_configuration#id12}{this site} for further details. 
 
-		\begin{enumerate}
-		\item Create the \texttt{slurmd} spool directory with the correct ownership.
+        \begin{enumerate}
+          \item Create the \texttt{slurmd} spool directory with the correct ownership.
 
-			\texttt{mkdir /var/spool/slurmd} \\% /var/log/slurm} \\
-			\texttt{chown slurm: /var/spool/slurmd} \\%  /var/log/slurm} \\
-			\texttt{chmod 755 /var/spool/slurmd}% /var/log/slurm} 
+            \texttt{mkdir /var/spool/slurmd} \\% /var/log/slurm} \\
+            \texttt{chown slurm: /var/spool/slurmd} \\%  /var/log/slurm} \\
+            \texttt{chmod 755 /var/spool/slurmd}% /var/log/slurm} 
 
-		\item Create the log files:
+          \item Create the log files:
 
-			\texttt{touch /var/log/slurmd.log} \\
-			\texttt{chown slurm: /var/log/slurmd.log}
+            \texttt{touch /var/log/slurmd.log} \\
+            \texttt{chown slurm: /var/log/slurmd.log}
 	
-		\item Create the pid files (only need \texttt{slurmctld.pid} on the control node):
+          \item Create the pid files (only need \texttt{slurmctld.pid} on the control node):
 
-			\texttt{touch /var/log/slurm-llnl/slurmd.pid /var/log/slurm-llnl/slurmctld.pid} \\
-			\texttt{chown slurm: /var/log/slurm-llnl/slurmd.pid /var/log/slurm-llnl/slurmctld.pid}
+            \texttt{touch /var/log/slurm-llnl/slurmd.pid /var/log/slurm-llnl/slurmctld.pid} \\
+            \texttt{chown slurm: /var/log/slurm-llnl/slurmd.pid /var/log/slurm-llnl/slurmctld.pid}
 
-		\item View the physical configuration (sockets, cores, real memory, etc.) of each of the compute nodes with the command \texttt{slurmd -C}, and update this information in \texttt{slurm.conf}.
+          \item View the physical configuration (sockets, cores, real memory, etc.) of each of the compute nodes with the command \texttt{slurmd -C}, and update this information in \texttt{slurm.conf}.
 
-		\item Set the \texttt{State} of the node as UNKNOWN (slurm assigns BUSY or IDLE) or FUTURE.
+          \item Set the \texttt{State} of the node as UNKNOWN (slurm assigns BUSY or IDLE) or FUTURE.
 
-		\item It may be a good idea to assign weights to the compute nodes. All things being equal, jobs will be allocated the nodes with the lowest weight. The enables prioritization based upon hardware parameters such as GPUs, RAM, CPU clock speed, CPU core number, CPU generation. (\href{https://wiki.fysik.dtu.dk/niflheim/Slurm_configuration#node-weight}{more info})
+          \item It may be a good idea to assign weights to the compute nodes. All things being equal, jobs will be allocated the nodes with the lowest weight. The enables prioritization based upon hardware parameters such as GPUs, RAM, CPU clock speed, CPU core number, CPU generation. (\href{https://wiki.fysik.dtu.dk/niflheim/Slurm_configuration#node-weight}{more info})
 
-		\item It may be a good idea in the future to uncomment \texttt{TmpFS=} in \texttt{slurm.conf}. (\texttt{/tmp} is the default; can change to e.g.\ \texttt{/scratch}.) You can add \texttt{TmpDisk=xxxxx} to each compute node line, where \texttt{xxxxx} is the size of the temporary file system.
+          \item It may be a good idea in the future to uncomment \texttt{TmpFS=} in \texttt{slurm.conf}. (\texttt{/tmp} is the default; can change to e.g.\ \texttt{/scratch}.) You can add \texttt{TmpDisk=xxxxx} to each compute node line, where \texttt{xxxxx} is the size of the temporary file system.
 
-		\end{enumerate}
+        \end{enumerate}
 
 %%%%%%%% MORE SPOOL! %%%%%%%%
-	\item Create spool directories:
+      \item Create spool directories:
 	
-	\texttt{mkdir -p /var/spool/slurm/d} \\
-	\texttt{mkdir /var/spool/slurm/ctld} \\
-	\texttt{chown slurm: /var/spool/slurm /var/spool/slurm/d /var/spool/slurm/ctld}
+        \texttt{mkdir -p /var/spool/slurm/d} \\
+        \texttt{mkdir /var/spool/slurm/ctld} \\
+        \texttt{chown slurm: /var/spool/slurm /var/spool/slurm/d /var/spool/slurm/ctld}
 	
 %%%%%%%% GRES.CONF %%%%%%%%
-	\item Create a \texttt{gres.conf} file. 
+      \item Create a \texttt{gres.conf} file. 
 
-	Inside this file, add a line for each GPU available on that node as follows: \texttt{Name=gpu Type=<type> File=/dev/nvidia\#}. (Confirm numbers with \texttt{ls -l /dev/nvidia*}.) See \href{https://slurm.schedmd.com/gres.conf.html}{the documentation} for more options.
+        Inside this file, add a line for each GPU available on that node as follows: \texttt{Name=gpu Type=<type> File=/dev/nvidia\#}. (Confirm numbers with \texttt{ls -l /dev/nvidia*}.) See \href{https://slurm.schedmd.com/gres.conf.html}{the documentation} for more options.
 
 %%%%%%%% CGROUP.CONF %%%%%%%%
-	\item Copy \texttt{cgroup.conf.example} into \texttt{cgroup.conf} and make the following changes:
+      \item Copy \texttt{cgroup.conf.example} into \texttt{cgroup.conf} and make the following changes:
 
-		\begin{enumerate}
-		\item \texttt{ConstrainCores=no}
-		\item \texttt{ConstrainRAMSpace=yes} (change from no)
-		\item You may also want to include \texttt{MemSpecLimit} and \texttt{ContrainKmemSpace}.  (\href{https://www.mankier.com/5/cgroup.conf}{reference material})
-		\end{enumerate}
+        \begin{enumerate}
+          \item \texttt{ConstrainCores=no}
+          \item \texttt{ConstrainRAMSpace=yes} (change from no)
+          \item You may also want to include \texttt{MemSpecLimit} and \texttt{ContrainKmemSpace}.  (\href{https://www.mankier.com/5/cgroup.conf}{reference material})
+        \end{enumerate}
 		
-	\item Adjust the grub configuration. Open \texttt{/etc/default/grub} 
-	
-	Add \texttt{cgroup\_enable=memory swapaccount=1} to  \texttt{GRUB\_CMDLINE\_LINUX} line.
-	
-	Run \texttt{update-grub}.
+      \item Adjust the grub configuration. Open \texttt{/etc/default/grub} \\
+        Add \texttt{cgroup\_enable=memory swapaccount=1} to  \texttt{GRUB\_CMDLINE\_LINUX} line. \\
+        Run \texttt{update-grub}.
 
-	\item Check the node configuration as detected by slurm by typing \texttt{slurmd -C} into the command line. Adjust the appropriate line of the COMPUTE NODES section of the \texttt{slurm.conf} file to match.
+      \item Check the node configuration as detected by slurm by typing \texttt{slurmd -C} into the command line. Adjust the appropriate line of the COMPUTE NODES section of the \texttt{slurm.conf} file to match.
 
-	\item Retrieve the configuration files:
+      \item Retrieve the configuration files:
 
-		\begin{enumerate}
-		\item Determine your version of slurm by typing \texttt{dpkg -l | grep slurm}. It should report version 17.11.2-1build1. 
-	
-		\item Obtain the code directly from the command line with: \\ 
-	\texttt{wget https://github.com/SchedMD/slurm/archive/slurm-17-11-2-1.tar.gz}
+        \begin{enumerate}
+          \item Determine your version of slurm by typing \texttt{dpkg -l | grep slurm}. It should report version 17.11.2-1build1. 
+
+          \item Obtain the code directly from the command line with: \\ 
+            \texttt{wget https://github.com/SchedMD/slurm/archive/slurm-17-11-2-1.tar.gz}
 	 
-		\item Extract the files. The example configuration files are in \texttt{<unzipped-slurm>/etc/}. Copy all example config files into \texttt{/etc/slurm-llnl/}
-	\end{enumerate}
+          \item Extract the files. The example configuration files are in \texttt{<unzipped-slurm>/etc/}. Copy all example config files into \texttt{/etc/slurm-llnl/}
+        \end{enumerate}
 
 %%%%%%%% SLURM.CONF %%%%%%%%
-	\item Copy \texttt{slurm.conf.example} to \texttt{slurm.conf} and change the following. With \texttt{install\_slurm.sh}, the backup controller information is not modified if \texttt{backupname = "NULL"} (the original setting).
+      \item Copy \texttt{slurm.conf.example} to \texttt{slurm.conf} and change the following. With \texttt{install\_slurm.sh}, the backup controller information is not modified if \texttt{backupname = "NULL"} (the original setting).
 
-		\begin{enumerate}
-		\item \texttt{ClusterName=Marvel}
+        \begin{enumerate}
+          \item \texttt{ClusterName=Marvel}
 
-		\item \texttt{ControlMachine=<name>}
+          \item \texttt{ControlMachine=<name>}
 
-		\item \texttt{ControlAddr=<IP>}
+          \item \texttt{ControlAddr=<IP>}
 
-		\item \texttt{BackupController=<name>}
+          \item \texttt{BackupController=<name>}
 
-		\item \texttt{BackupAddr=<IP>}
+          \item \texttt{BackupAddr=<IP>}
 
-		\item \texttt{ProctrackType=proctrack/cgroup}	
+          \item \texttt{ProctrackType=proctrack/cgroup}	
 
-		\item \texttt{TaskPlugin=task/cgroup}
+          \item \texttt{TaskPlugin=task/cgroup}
 
-		\item \texttt{InactiveLimit=600}	
+          \item \texttt{InactiveLimit=600}	
 
-		\item \texttt{NodeName=thanos}
+          \item \texttt{NodeName=thanos}
 
-		\item \texttt{Nodes=thanos}
+          \item \texttt{Nodes=thanos}
 
-		\item \texttt{PartitionName=CEM}
+          \item \texttt{PartitionName=CEM}
 
-		\item Remove \texttt{Procs=1} and replace it with \texttt{CPUs=128}. (On a multi-core/hyperthreaded system, slurm uses the number of threads as the number of CPUs)
+          \item Remove \texttt{Procs=1} and replace it with \texttt{CPUs=128}. (On a multi-core/hyperthreaded system, slurm uses the number of threads as the number of CPUs)
 
-		\item Add a RESOURCES section just above COMPUTE NODES with the following: \texttt{GresTypes=gpu}.
+          \item Add a RESOURCES section just above COMPUTE NODES with the following: \texttt{GresTypes=gpu}.
 
-		\item Also under the RESOURCES section, add \texttt{LaunchParameters=send\_gids}. This has \texttt{slurmctld} look up the user name and group ids instead of the individual nodes and prevents the ``couldn't chdir" error. This is the default setting in newer versions of slurm.
+          \item Also under the RESOURCES section, add \texttt{LaunchParameters=send\_gids}. This has \texttt{slurmctld} look up the user name and group ids instead of the individual nodes and prevents the ``couldn't chdir" error. This is the default setting in newer versions of slurm.
 
-		\item In the COMPUTE NODES, add the following to each node containing one or more GPUs. \# is the number of available GPUs on that node: \texttt{Gres=gpu:\#}. Insert this just before \texttt{State=UNKNOWN}.
+          \item In the COMPUTE NODES, add the following to each node containing one or more GPUs. \# is the number of available GPUs on that node: \texttt{Gres=gpu:\#}. Insert this just before \texttt{State=UNKNOWN}.
 
-		\item In the SCHEDULING section, set the default memory per node at 1000 MB. (Slurm's default is ALL, which will not allow multiple jobs simultaneously.) \\
-		DefMemPerNode=1000
+          \item In the SCHEDULING section, set the default memory per node at 1000 MB. (Slurm's default is ALL, which will not allow multiple jobs simultaneously.) \\
+            DefMemPerNode=1000
 
-		\item Change the location of the slurm PID files to the following:
+          \item Change the location of the slurm PID files to the following:
 
-		\texttt{SlurmctldPidFile=/var/run/slurm-llnl/slurmctld.pid} \\ %# originally in /var/run/
-		\texttt{SlurmdPidFile=/var/run/slurm-llnl/slurmd.pid} % # originally in /var/run/
+            \texttt{SlurmctldPidFile=/var/run/slurm-llnl/slurmctld.pid} \\ %# originally in /var/run/
+            \texttt{SlurmdPidFile=/var/run/slurm-llnl/slurmd.pid} % # originally in /var/run/
 
-		\item Modify \texttt{slurm.conf} so that the nodes can be rebooted while slurm is running. Change the reboot program to \texttt{RebootProgram="/sbin/reboot"}. 
+          \item Modify \texttt{slurm.conf} so that the nodes can be rebooted while slurm is running. Change the reboot program to \texttt{RebootProgram="/sbin/reboot"}. 
 
-		\item Change when a DOWN node will be returned to service. The default (\texttt{0}) is that nodes will remain down until the admin manually changes the state. We will change this to \texttt{1}, meaning that the nodes will be restored to service if it is reponding, has a valid configuration, and was not manually set as DOWN. \\
-		\texttt{ReturnToService=1}
+          \item Change when a DOWN node will be returned to service. The default (\texttt{0}) is that nodes will remain down until the admin manually changes the state. We will change this to \texttt{1}, meaning that the nodes will be restored to service if it is reponding, has a valid configuration, and was not manually set as DOWN. \\
+            \texttt{ReturnToService=1}
 
-		\item Check that \texttt{StateSaveLocation=/var/spool/slurm/ctld}. This directory should already exist, but doublecheck to make sure.
+          \item Check that \texttt{StateSaveLocation=/var/spool/slurm/ctld}. This directory should already exist, but doublecheck to make sure.
 
 %%%%%%%% RESOURCES SETTINGS %%%%%%%%
-		\item Check that \texttt{FastSchedule=1} and \texttt{SchedulerType=sched/backfill} (default settings).
+          \item Check that \texttt{FastSchedule=1} and \texttt{SchedulerType=sched/backfill} (default settings).
 	
-		\item Set the consumable resources (\href{https://slurm.schedmd.com/cons_res.html}{1} and \href{https://slurm.schedmd.com/cons_res_share.html}{2}):
-		\texttt{SelectType=select/cons\_res}
+          \item Set the consumable resources (\href{https://slurm.schedmd.com/cons_res.html}{1} and \href{https://slurm.schedmd.com/cons_res_share.html}{2}):
+            \texttt{SelectType=select/cons\_res}
 	
-		\item You must also select what is allowed as consumable resources. In \texttt{slurm.conf}, set \\
-		\texttt{SelectTypeParameters=CR\_Core\_Memory}. 
+          \item You must also select what is allowed as consumable resources. In \texttt{slurm.conf}, set \\
+            \texttt{SelectTypeParameters=CR\_Core\_Memory}. 
 	
-		NOTE: If you use memory as a consumable resource, you \emph{must} set the \texttt{RealMemory} parameter.
+            NOTE: If you use memory as a consumable resource, you \emph{must} set the \texttt{RealMemory} parameter.
 	
-		NOTE: If CPUs are a consumable resource, Slurm has no notion of sockets, cores, or threads. On single- and multi-core systems, CPU refers to cores. On a multi-core/hyperthread system CPU refers to threads.
+            NOTE: If CPUs are a consumable resource, Slurm has no notion of sockets, cores, or threads. On single- and multi-core systems, CPU refers to cores. On a multi-core/hyperthread system CPU refers to threads.
 	
-		\item Because both CPUs and Memory are consumable resources, you \emph{must} set \texttt{OverSubscribe=NO} to prevent jobs from conflicting with one another. Strange behavior will occur if \texttt{OverSubscribe=YES}, as jobs will conflict with one another. %Also, slurm automatically assigns all memory to a job by default, so the line \texttt{\#SBATCH --mem=X} must be specified if more than one job is to run simultaneously. 
+          \item Because both CPUs and Memory are consumable resources, you \emph{must} set \texttt{OverSubscribe=NO} to prevent jobs from conflicting with one another. Strange behavior will occur if \texttt{OverSubscribe=YES}, as jobs will conflict with one another. %Also, slurm automatically assigns all memory to a job by default, so the line \texttt{\#SBATCH --mem=X} must be specified if more than one job is to run simultaneously. 
 
 %%%%%%%% PARTITION CONFIGURATION %%%%%%%%
-		\item Configure the partitions in \texttt{slurm.conf}, for example: \\
-		\texttt{PartitionName=xeon8 Nodes=a[070-080] Default=YES DefaultTime=50:00:00 \\ MaxTime=168:00:00 State=UNKNOWN}
+          \item Configure the partitions in \texttt{slurm.conf}, for example: \\
+            \texttt{PartitionName=xeon8 Nodes=a[070-080] Default=YES DefaultTime=50:00:00 \\ MaxTime=168:00:00 State=UNKNOWN}
 
-		In the SCHEDULING section of the \texttt{slurm.conf} file, set \texttt{EnforcePartLimits=YES}. This will reject jobs that exceed a partition's size and/or time limits when they're submitted.
+            In the SCHEDULING section of the \texttt{slurm.conf} file, set \texttt{EnforcePartLimits=YES}. This will reject jobs that exceed a partition's size and/or time limits when they're submitted.
 
-		Things to keep in mind for the future (\emph{\textbf{not setting these up}}):
-			\begin{itemize}
-			\item Partitions may overlap so that some nodes belong to several partitions. 
+            Things to keep in mind for the future (\emph{\textbf{not setting these up}}):
+            \begin{itemize}
+              \item Partitions may overlap so that some nodes belong to several partitions. 
 	
-			\item Access to partitions is configured in \texttt{slurm.conf} using AllowAccounts, AllowGroups, or AllowQos.
+              \item Access to partitions is configured in \texttt{slurm.conf} using AllowAccounts, AllowGroups, or AllowQos.
 	
-			\item If some partitions (e.g.\ big memory nodes) should have a higher priority, set this in \texttt{slurm.conf} using the multifactor plugin:
-			\texttt{PartitionName ... PriorityJobFactor=10} \\
-			\texttt{PriorityWeightPartition=1000}
-			\end{itemize}
+              \item If some partitions (e.g.\ big memory nodes) should have a higher priority, set this in \texttt{slurm.conf} using the multifactor plugin:
+                \texttt{PartitionName ... PriorityJobFactor=10} \\
+                \texttt{PriorityWeightPartition=1000}
+            \end{itemize}
 
 %%%%%%%% LIMIT PROPAGATION %%%%%%%%
-		\item By default, slurm propagates all user limits from the submitting node (see \texttt{ulimit -a} to the batch jobs. Configure \texttt{slurm.conf} so that the locked memory limit isn't propagated by uncommenting and setting as follows: \\
-		\texttt{PropagateResourceLimitsExcept=MEMLOCK}
+          \item By default, slurm propagates all user limits from the submitting node (see \texttt{ulimit -a} to the batch jobs. Configure \texttt{slurm.conf} so that the locked memory limit isn't propagated by uncommenting and setting as follows: \\
+            \texttt{PropagateResourceLimitsExcept=MEMLOCK}
 	
-		(We haven't done the following, but if you have imposed any non-default limits on the login nodes in \texttt{/etc/security/limits.conf} or \texttt{/etc/security/limits.d/*.conf}, you probably want to prohibit these by setting: 
-		\texttt{PropagateResourceLimitsExcept=ALL}
+            (We haven't done the following, but if you have imposed any non-default limits on the login nodes in \texttt{/etc/security/limits.conf} or \texttt{/etc/security/limits.d/*.conf}, you probably want to prohibit these by setting: 
+            \texttt{PropagateResourceLimitsExcept=ALL}
 	
-		See the slurm documentation for available options.)
+            See the slurm documentation for available options.)
 
 %%%%%%%% PLUGIN LOCATION %%%%%%%%
-		\item Do NOT modify \texttt{\#PluginDir}! Doing so causes slurm to crash. Slurm defaults to: \\
-		\texttt{usr/lib/x86\_64-linux-gnu/slurm-wlm}
-		\end{enumerate} 
+          \item Do NOT modify \texttt{\#PluginDir}! Doing so causes slurm to crash. Slurm defaults to: \\
+            \texttt{usr/lib/x86\_64-linux-gnu/slurm-wlm}
+        \end{enumerate} 
 
-	\item Start \texttt{slurmd} and, if applicable, \texttt{slurmctld}.
+      \item Start \texttt{slurmd} and, if applicable, \texttt{slurmctld}.
 
-	\texttt{sudo systemctl start slurmd} \\
-	\texttt{sudo systemctl start slurmctld \quad \# if applicable}
+        \texttt{sudo systemctl start slurmd} \\
+        \texttt{sudo systemctl start slurmctld \quad \# if applicable}
 
-	You will get a warning or error if \texttt{slurmd -C} failed and the code autofilled the laptop values.
+        You will get a warning or error if \texttt{slurmd -C} failed and the code autofilled the laptop values.
 
-	\item Removes the extracted folder. The downloaded compressed folder is left untouched.
+      \item Removes the extracted folder. The downloaded compressed folder is left untouched.
 	
-	\item End of installation script.
-	\end{enumerate}
+      \item End of installation script.
+    \end{enumerate}
 	
 %%%%%%%% ADJUSTMENTS FOLLOWING SCRIPT EXECUTION %%%%%%%%
-\item Check that the \texttt{NodeName} line matches the output of \texttt{slurmd -C}. If \texttt{slurmd -C} fails to execute properly, \texttt{install\_slurm.sh} autofills with the values for an Oryx Pro.
+  \item Check that the \texttt{NodeName} line matches the output of \texttt{slurmd -C}. If \texttt{slurmd -C} fails to execute properly, \texttt{install\_slurm.sh} autofills with the values for an Oryx Pro.
 
-\item Resolve any errors that popped up when running the installation script.
+  \item Resolve any errors that popped up when running the installation script.
 
-	\begin{enumerate}
-	\item If the daemon(s) failed to start, type \texttt{systemctl status <daemon>}. If slurm can't find nodes or a machine name, fix the \texttt{slurm.conf} and try again. 
+    \begin{enumerate}
+      \item If the daemon(s) failed to start, type \texttt{systemctl status <daemon>}. If slurm can't find nodes or a machine name, fix the \texttt{slurm.conf} and try again. 
 
-	\item If slurm complains that it doesn't have permissions to access a directory, you probably forgot \texttt{sudo} when starting slurm.
+      \item If slurm complains that it doesn't have permissions to access a directory, you probably forgot \texttt{sudo} when starting slurm.
 
-	\item If slurm isn't starting because it is missing directories, manually create those directories, set \texttt{slurm} as the owner, and try again.
+      \item If slurm isn't starting because it is missing directories, manually create those directories, set \texttt{slurm} as the owner, and try again.
 
-	\item If slurm claims to be missing any configuration files (\texttt{*.conf}), see if it exists in \texttt{/etc/slurm-llnl} as \texttt{*.conf.example}. If it does, copy it, modify it, and try again. If it doesn't exist, refer to the source code on github for \texttt{your version of slurm} and copy it where it needs to go.
+      \item If slurm claims to be missing any configuration files (\texttt{*.conf}), see if it exists in \texttt{/etc/slurm-llnl} as \texttt{*.conf.example}. If it does, copy it, modify it, and try again. If it doesn't exist, refer to the source code on github for \texttt{your version of slurm} and copy it where it needs to go.
 
-	\item If slurm can't find the GPUs, make sure that the system can see the GPUs and that you have an appropriate Nvidia driver.
+      \item If slurm can't find the GPUs, make sure that the system can see the GPUs and that you have an appropriate Nvidia driver.
 
-	\item If it's still not working, start slurm manually (section \ref{subsec:manualstart}) to see more detailed error messages. 
-	\end{enumerate}
+      \item If it's still not working, start slurm manually (section \ref{subsec:manualstart}) to see more detailed error messages. 
+    \end{enumerate}
 
-\item \emph{At present the script only handles local setup}. 
+  \item \emph{At present the script only handles local setup}. 
 
-	\begin{enumerate}
-	\item \texttt{slurm.conf} -- Nodes and partitions on remote machines must be added manually. The rest of the file is the same, so all that will be required is copy/pasting the node and partition information. Add \texttt{NodeAddr=<IP>} just after \texttt{NodeName=<name>} to all of the compute nodes.
+    \begin{enumerate}
+      \item \texttt{slurm.conf} -- Nodes and partitions on remote machines must be added manually. The rest of the file is the same, so all that will be required is copy/pasting the node and partition information. Add \texttt{NodeAddr=<IP>} just after \texttt{NodeName=<name>} to all of the compute nodes.
 
-	\item \emph{Copy the proper munge key} into \texttt{/etc/munge}, then restart the \texttt{munge} and \texttt{slurmd} daemons.
-	\end{enumerate}
+      \item \emph{Copy the proper munge key} into \texttt{/etc/munge}, then restart the \texttt{munge} and \texttt{slurmd} daemons.
+    \end{enumerate}
 
-\item If you installed slurm with \texttt{install\_slurm.sh}, \texttt{cgroup.conf} will be the same on all nodes and all the \texttt{gres.conf} files will be setup appropriately. If you did not use the script, make sure that \texttt{cgroup.conf} is the same on all compute nodes and add \texttt{gres.conf} files as necessary.
+  \item If you installed slurm with \texttt{install\_slurm.sh}, \texttt{cgroup.conf} will be the same on all nodes and all the \texttt{gres.conf} files will be setup appropriately. If you did not use the script, make sure that \texttt{cgroup.conf} is the same on all compute nodes and add \texttt{gres.conf} files as necessary.
 
-\item Restart the node.
+  \item Restart the node.
 
 %%%%%%%% MUNGE %%%%%%%%
-\item Check that munge is setup properly. \label{list:munge}
-	\begin{enumerate}
-	\item If munge is already running, stop it with \texttt{systemctl stop munge}.
+  \item Check that munge is setup properly. \label{list:munge}
+    \begin{enumerate}
+      \item If munge is already running, stop it with \texttt{systemctl stop munge}.
 
-	\item Check that the following files/directories are owned by \texttt{munge} instead of \texttt{root}: \\
-	\texttt{/etc/munge}, 
-	\texttt{/usr/bin/munge}, 
-	\texttt{/usr/sbin/munged}, 
-	\texttt{/var/lib/munge}, 
-	\texttt{/var/log/munge}, \\
-	\texttt{/var/run/munge}
+        \item Check that the following files/directories are owned by \texttt{munge} instead of \texttt{root}: \\
+        \texttt{/etc/munge}, 
+        \texttt{/usr/bin/munge}, 
+        \texttt{/usr/sbin/munged}, 
+        \texttt{/var/lib/munge}, 
+        \texttt{/var/log/munge}, \\
+        \texttt{/var/run/munge}
 
-	\item Create a munge key on the control node with \texttt{sudo /usr/sbin/create-munge-key}. (Ubuntu may have already done this for you.) 
+      \item Create a munge key on the control node with \texttt{sudo /usr/sbin/create-munge-key}. (Ubuntu may have already done this for you.) 
 
-	\item On the controller, make sure the munge key (\texttt{munge.key}) is in \texttt{/etc/munge/munge.key} and change the owner to munge.  
+      \item On the controller, make sure the munge key (\texttt{munge.key}) is in \texttt{/etc/munge/munge.key} and change the owner to munge.  
 
-	\item Copy the key from the control node to all existing compute nodes: 
+      \item Copy the key from the control node to all existing compute nodes: 
 
-		\texttt{sudo scp /etc/munge/munge.key admin@compute-node:/home/<admin>/}
+        \texttt{sudo scp /etc/munge/munge.key admin@compute-node:/home/<admin>/}
 
-	\item On the compute nodes, move the \texttt{munge.key} into \texttt{/etc/munge}. Make sure that it is owned by \texttt{munge} with file permissions \texttt{400}.
+      \item On the compute nodes, move the \texttt{munge.key} into \texttt{/etc/munge}. Make sure that it is owned by \texttt{munge} with file permissions \texttt{400}.
 
-	\item Make sure that munge is enabled and (re)start it on all machines:
+      \item Make sure that munge is enabled and (re)start it on all machines:
 
-		\texttt{sudo systemctl start munge}
+        \texttt{sudo systemctl start munge}
 
-	\item Check if munge is running by typing \texttt{systemctl status munge}.
+      \item Check if munge is running by typing \texttt{systemctl status munge}.
 
-	\item Test munge: \addcontentsline{lot}{table}{Munge test commands}
+      \item Test munge: \addcontentsline{lot}{table}{Munge test commands}
 
-	    Generate a credential on stdout: \\
-	    \texttt{munge -n} \\
-	    Check if a credential can be locally decoded: \\
-	    \texttt{munge -n | unmunge} \\
-	    Check if a credential can be remotely decoded: \\
-	    \texttt{munge -n | ssh <admin>@<node> unmunge} \\
-	    Run a quick benchmark: \\
-	    \texttt{remunge}
-
-	\end{enumerate}
+        Generate a credential on stdout: \\
+        \texttt{munge -n} \\
+        Check if a credential can be locally decoded: \\
+        \texttt{munge -n | unmunge} \\
+        Check if a credential can be remotely decoded: \\
+        \texttt{munge -n | ssh <admin>@<node> unmunge} \\
+        Run a quick benchmark: \\
+        \texttt{remunge}
+    \end{enumerate}
 
 %%%%%%%% START SLURM %%%%%%%%
-\item Start slurm. Don't worry about enabling the daemons just yet; that will happen later.
+  \item Start slurm. Don't worry about enabling the daemons just yet; that will happen later.
 
-	\texttt{sudo systemctl start slurmctld} \quad \# Control node \\
-	\texttt{sudo systemctl start slurmd} \quad \# Compute nodes 
+    \texttt{sudo systemctl start slurmctld} \quad \# Control node \\
+    \texttt{sudo systemctl start slurmd} \quad \# Compute nodes 
 
-\item Test that the job submission is working. The submission command is \texttt{sbatch <script-name>}. To check the status of the job, type \texttt{squeue}. Output will be written in the same folder as the script. Refer to section \ref{sec:slurmscripts} for an explanation of the SBATCH directives.
+  \item Test that the job submission is working. The submission command is \texttt{sbatch <script-name>}. To check the status of the job, type \texttt{squeue}. Output will be written in the same folder as the script. Refer to section \ref{sec:slurmscripts} for an explanation of the SBATCH directives.
 
-The following test script is also available in the MiniClusterTools repository as \texttt{files/test\_sbatch.sh}:
-\begin{verbatim}
+    The following test script is also available in the MiniClusterTools repository as \texttt{files/test\_sbatch.sh}:
+	\begin{verbatim}
 	#!/bin/bash
 	#SBATCH --job-name=example
 	#SBATCH --nodes=1
@@ -413,29 +408,28 @@ The following test script is also available in the MiniClusterTools repository a
 	#SBATCH --output=%x.o%j
 	echo "Hello World!"
 	sleep 120
-\end{verbatim}
+	\end{verbatim}
 
-Another script, complete with an explanation of the \texttt{SBATCH} directives, can be found in section \ref{subsec:sbatchscript}.
+    Another script, complete with an explanation of the \texttt{SBATCH} directives, can be found in section \ref{subsec:sbatchscript}.
 
-\emph{Note: Test scripts should contain the \emph{\texttt{sleep}} command to keep the job ``running" for a longer time.}
+    \emph{Note: Test scripts should contain the \emph{\texttt{sleep}} command to keep the job ``running" for a longer time.}
 
-\item Stop the slurm daemons: 
+  \item Stop the slurm daemons: 
 
-	\texttt{systemd}: \texttt{sudo systemctl stop <daemon>} \\
-	Manual start: \texttt{Ctrl-C}
+    \texttt{systemd}: \texttt{sudo systemctl stop <daemon>} \\
+    Manual start: \texttt{Ctrl-C}
 
 %%%%%%%% PROLOG & EPILOG %%%%%%%%
-\item We are using the default Prolog and Epilog scripts. Refer to the \href{https://slurm.schedmd.com/slurm.conf.html}{documentation} if this changes.
+  \item We are using the default Prolog and Epilog scripts. Refer to the \href{https://slurm.schedmd.com/slurm.conf.html}{documentation} if this changes.
 
-\item Restart the node.
+  \item Restart the node.
 	
-\item Start slurm and test the queue to confirm that it can run multiple jobs simultaneously.
+  \item Start slurm and test the queue to confirm that it can run multiple jobs simultaneously.
 
-\item Enable slurm.
+  \item Enable slurm.
 
-	\texttt{sudo systemctl enable slurmctld} \quad \# Control node(s) \\
-	\texttt{sudo systemctl enable slurmd} \quad \# Compute nodes 
-	
+    \texttt{sudo systemctl enable slurmctld} \quad \# Control node(s) \\
+    \texttt{sudo systemctl enable slurmd} \quad \# Compute nodes 
 \end{enumerate}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%\
@@ -451,63 +445,63 @@ This particular setup is largely driven by permission-related considerations. Au
 You need the \texttt{copy\_state.sh} file from the MiniClusterTools repo to copy information locally between the slurm state folder and the admin folder. What it does:
 
 \begin{enumerate}
-	\item Checks for the proper input parameters. There must be one or two options specified. The script is called as:
+  \item Checks for the proper input parameters. There must be one or two options specified. The script is called as:
 
-		\texttt{bash /path/to/copy\_state.sh <direction> [sudo]}
+    \texttt{bash /path/to/copy\_state.sh <direction> [sudo]}
 
-	\item Check that the value of \texttt{<direction>} is acceptable. The only accepted inputs for \texttt{<direction>} are \texttt{to\_admin} and \texttt{to\_root}, which transfer data to the admin account and to the proper slurm-owned state folder, respectively. 
+  \item Check that the value of \texttt{<direction>} is acceptable. The only accepted inputs for \texttt{<direction>} are \texttt{to\_admin} and \texttt{to\_root}, which transfer data to the admin account and to the proper slurm-owned state folder, respectively. 
 
-	\item Controls whether the code runs with \texttt{sudo} privileges as required if the user calling the script is anyone other than \texttt{root}. Running with \texttt{sudo} privileges is accomplished by assigning to a shell parameter a string of either \texttt{"sudo"} or \texttt{"with\_sudo"}. Assigning any other value (recommend using \texttt{""}) is equivalent to leaving this option empty.
+  \item Controls whether the code runs with \texttt{sudo} privileges as required if the user calling the script is anyone other than \texttt{root}. Run with \texttt{sudo} privileges by assigning to a shell parameter a string of either \texttt{"sudo"} or \texttt{"with\_sudo"}. Assigning \emph{any} other value is equivalent to leaving this option empty.
 
-	\item Recursively copy (with \texttt{rsync}) and change file permissions/ownership as necessary, depending on the direction of transfer.
+  \item Recursively copy (with \texttt{rsync}) and change file permissions/ownership as necessary, depending on the direction of transfer.
 \end{enumerate}
 
-Now set up automatic Slurm state transfer.
+\noindent Now set up automatic Slurm state transfer.
 
 \begin{enumerate}
-\item Open \texttt{root}'s crontab on both machines with \texttt{sudo crontab -u root -e}.
+  \item Open \texttt{root}'s crontab on both machines with \texttt{sudo crontab -u root -e}.
 
-	Add the following lines to copy to the other machine once an hour (for now, ultimately more frequently). (Slurm writes the state every 5 seconds.) Note: you must use the admin account for \texttt{rsync}. Running \texttt{rsync} from the root crontab with \texttt{sudo [-i] -u <admin> rsync} will be rejected by the remote servers.
+    Add the following lines to copy to the other machine once an hour (for now, ultimately more frequently). (Slurm writes the state every 5 seconds.) Note: you must use the admin account for \texttt{rsync}. Running \texttt{rsync} from the root crontab with \texttt{sudo [-i] -u <admin> rsync} will be rejected by the remote servers.
 	\begin{verbatim}
 	0    * * * * bash /home/<local-admin>/Code/MiniClusterTools/copy_state.sh to_admin
 	15   * * * * bash /home/<local-admin>/Code/MiniClusterTools/copy_state.sh to_root
 	\end{verbatim}
 
-\item If \texttt{ssh} keys are already set up, skip to step \ref{list:sshkeys}. Otherwise, make ssh keys on each machine in the admin account. Modify the key name/location if desired, but \emph{you must leave the passphrase empty}. 
+  \item If \texttt{ssh} keys are already set up, skip to step \ref{list:sshkeys}. Otherwise, make ssh keys on each machine in the admin account. Modify the key name/location if desired, but \emph{you must leave the passphrase empty}. 
 
-	\texttt{ssh-keygen [-f \textasciitilde /.ssh/<custom\_name>]}
+    \texttt{ssh-keygen [-f \textasciitilde /.ssh/<custom\_name>]}
 
-\item Copy the keys to the admin account on the other controller, then test the key.
+  \item Copy the keys to the admin account on the other controller, then test the key.
 
-	\texttt{ssh-copy-id <admin>@<remote>} \\
-	\texttt{ssh -i \textasciitilde /.ssh/<local\_id\_rsa> <admin>@<remote>}
+    \texttt{ssh-copy-id <admin>@<remote>} \\
+    \texttt{ssh -i \textasciitilde /.ssh/<local\_id\_rsa> <admin>@<remote>}
 
-\item Test that \texttt{rsync} works over \texttt{ssh} in the admin account.
+  \item Test that \texttt{rsync} works over \texttt{ssh} in the admin account.
 
-	\texttt{rsync -a -e "ssh -i \textasciitilde /.ssh/<local\_id\_rsa>" "<randomfile>" "<admin>@<remote>:\textasciitilde /"}
+    \texttt{rsync -a -e "ssh -i \textasciitilde /.ssh/<local\_id\_rsa>" "<randomfile>" "<admin>@<remote>:\textasciitilde /"}
 
-\item \label{list:sshkeys} Modify the admin crontab on each machine to copy to the remote machine once an hour.
+  \item \label{list:sshkeys} Modify the admin crontab on each machine to copy to the remote machine once an hour.
 
 	\begin{verbatim}
 	20 * * * *  rsync -au --fake-super -e "ssh -i ~/.ssh/<local_key>" \
 	       "/home/<local-admin>/slurm_state" "<admin>@<remoteIP>:/home/<admin>/"
 	\end{verbatim}
 
-\item There are a couple ways to confirm that it worked. Wait until after the cron job should have run, then do one of the following:
-	\begin{itemize}
-	\item Check \texttt{/var/log/syslog}
-	\item Check the log mailed by \texttt{rsync}
-	\item Check the timestamps in the backup controller's slurm state folder
-	\end{itemize}
+  \item There are a couple ways to confirm that it worked. Wait until after the cron job should have run, then do one of the following:
+    \begin{itemize}
+      \item Check \texttt{/var/log/syslog}
+      \item Check the log mailed by \texttt{rsync}
+      \item Check the timestamps in the backup controller's slurm state folder
+    \end{itemize}
 
-\item Each controller needs to copy the state files from the active controller \emph{before} starting slurm. I've elected to have the local controller grab the files from the remote controller to ensure that it grabs the most recent state. (This may eventually get turned into a daemon that is required before \texttt{slurmctld} can start, but I'm going with the following for now.) 
+  \item Each controller needs to copy the state files from the active controller \emph{before} starting slurm. I've elected to have the local controller grab the files from the remote controller to ensure that it grabs the most recent state. (This may eventually get turned into a daemon that is required before \texttt{slurmctld} can start, but I'm going with the following for now.) 
 
-	\textbf{NOTE:} The following works beautifully on our cluster. When testing on a new cluster, test it on the backup controller! Otherwise you risk killing all jobs should a part of code not work properly.
+    \textbf{NOTE:} The following works beautifully on our cluster. When testing this code, either make sure the cluster is offline or test it on the backup controller! Otherwise you risk killing all jobs should a part of code not work properly.
 
-	\begin{enumerate}
-	\item Open the \texttt{\textasciitilde /.bashrc} file on the admin account on each controller.
+    \begin{enumerate}
+      \item Open the \texttt{\textasciitilde /.bashrc} file on the admin account on each controller.
 
-		Append the following text:
+        Append the following text:
 		\begin{verbatim}
 		# Slurmctld start if daemon is not running
 		if (! systemctl status slurmctld | grep "[Aa]ctive.*[Rr]unning" > /dev/null); then
@@ -529,12 +523,12 @@ Now set up automatic Slurm state transfer.
 		fi
 		\end{verbatim}
 
-	\item Test this script on the backup controller. Stop \texttt{slurmctld}, then source \texttt{\textasciitilde /.bashrc}.	
+      \item Test this script on the backup controller. Stop \texttt{slurmctld}, then source \texttt{\textasciitilde /.bashrc}.	
 
-		If you see \texttt{Starting slurmctld...} and no error messages, then the script works properly. Confirm that the daemon is running with \texttt{systemctl status slurmctld}.
+        If you see \texttt{Starting slurmctld...} and no error messages, then the script works properly. Confirm that the daemon is running with \texttt{systemctl status slurmctld}.
 
-	\item Disable \texttt{slurmctld}. Now the daemon will only start when the admin logs in for the first time, but the slurm state will always be up to date when the system resumes.
-	\end{enumerate}
+      \item Disable \texttt{slurmctld}. Now the daemon will only start when the admin logs in for the first time, but the slurm state will always be up to date when the system resumes.
+    \end{enumerate}
 
 %	%Create a daemon specifically to run \texttt{rsync} as the admin. Place this daemon somewhere in \texttt{/etc/systemd/system}. Make sure that \texttt{User=} and \texttt{Group=} are set to the admin account in the \texttt{[Service]} section of the daemon.
 %%
@@ -548,7 +542,13 @@ Now set up automatic Slurm state transfer.
 %%
 %%	May have to create a daemon specifically to run \texttt{rsync} as the admin. Place this daemon somewhere in \texttt{/etc/systemd/system}. Make sure that \texttt{User=} and \texttt{Group=} are set to the admin account in the \texttt{[Service]} section of the daemon.
 
-\item Consider switching from \texttt{cron} to the \texttt{systemd} timers to run more frequently.
+  \item \label{item:cronNoMail} (Recommended) By default \texttt{cron} sends a message every time it does something, meaning that your inbox may get overrun if \texttt{cron} runs regularly. \texttt{cron} will not send mail if there is no output to send, so silencing a command's output is enough to stop getting that notification from \texttt{cron}.
+
+    Some commands have a quiet option. For \texttt{rsync}, \texttt{-q} that suppresses non-error messages. If a command has a quiet option, this is the preferred way to suppress output.
+
+    For commands \emph{without} a quiet option, there are several ways to silence output. I recommend either redirecting \texttt{crond}'s mail output to the system log or using redirects (appending \texttt{>/dev/null 2>\&1} to the offending line in your \texttt{crontab}) instead of completely disabling mail from \texttt{crond}. A more complete list of possibilities can be found \href{https://www.putorius.net/stop-cron-daemon-from-sending-email-for.html}{here} or \href{http://www.auxnet.org/index.php/the-news/228-stop-cron-daemon-from-sending-email-for-each-job}{here}. 
+
+  \item (Optional) Consider switching from \texttt{cron} to the \texttt{systemd} timers to run more frequently.
 \end{enumerate}
 
 \subsection{Set up backup controller takeover} \label{subsec:SetupBackupTakeover}
@@ -558,34 +558,102 @@ You must set up the state transfer (section \ref{subsec:shareStateSave}) before 
 You will need the \texttt{transfer\_slurm\_control.sh} file from the MiniClusterTools repo. What it does:
 
 \begin{enumerate}
-	\item Uses \texttt{copy\_state.sh} to transfer the state files to the admin account.
+  \item Uses \texttt{copy\_state.sh} to transfer the state files to the admin account.
 
-	\item Copies files to the other controller using \texttt{rsync} and \texttt{ssh} keys.
+  \item Copies files to the other controller using \texttt{rsync} and \texttt{ssh} keys.
 
-	\item Uses the remote machine's version of \texttt{copy\_state.sh} to transfer the state files to the proper directory.
+  \item Uses the remote machine's version of \texttt{copy\_state.sh} to transfer the state files to the proper directory.
 
-	\item Issues the takeover command, \texttt{sudo scontrol takeover}.
+  \item Issues the takeover command, \texttt{sudo scontrol takeover}.
 
-	\item Stops the local control daemon, \texttt{sudo systemctl stop slurmctld}.
+  \item Stops the local control daemon, \texttt{sudo systemctl stop slurmctld}.
 \end{enumerate}
 
 \noindent Set up the state transfer and takeover command:
 
 \begin{enumerate}
-\item If \texttt{transfer\_slurm\_control.sh} isn't already an executable, make it executable:
+  \item If \texttt{transfer\_slurm\_control.sh} isn't already an executable, make it executable:
 
-	\texttt{sudo chmod +x transfer\_slurm\_state.sh}
+    \texttt{sudo chmod +x transfer\_slurm\_state.sh}
 
-\item (Optional) Open the admin's \texttt{.bash\_aliases} (preferred) or \texttt{.bashrc} on both controllers and alias a command that transfers the slurm state immediately prior to issuing the takeover command, then source \texttt{.bashrc}.
+  \item (Optional) Open the admin's \texttt{.bash\_aliases} (preferred) or \texttt{.bashrc} on both controllers and alias a command that transfers the slurm state immediately prior to issuing the takeover command, then source \texttt{.bashrc}.
 
-	\texttt{alias state\_takeover='/<path>/<to>/MiniClusterTools/transfer\_slurm\_state.sh'}
+    \texttt{alias state\_takeover='/<path>/<to>/MiniClusterTools/transfer\_slurm\_state.sh'}
 \end{enumerate}
 
+\section{Slurm mailing setup} \label{sec:slurmmail}
+
+You can use the slurm mailing function to notify users regardless of whether you have a fully-qualified domain name (FQDN), though the setup will differ. Both methods are given below for the sake of completeness.
+
+Both methods require you to install a mail user agent. I chose \texttt{bsd-mailx} for MARVEL. If you do not have a FQDN, choose, choose ``local only" and use the local machine's hostname as the mail server host when installing. (Also described in section \ref{sec:localmail}, though with about the same level of detail as here.)
+
+\subsection{Without a FQDN} \label{subsec:mail_noFQDN}
+
+If you do not have a FQDN, as is the case with MARVEL, you \textbf{\emph{cannot send actual emails}} to users. The following setup works is a workaround to notify users hourly of job status without requiring a FQDN. 
+
+\begin{enumerate}
+  \item Add the following to \texttt{slurm.conf}, just above the ``Resources" section. Keep \texttt{MailDomain} commented out or omit it entirely.
+
+	\begin{verbatim}
+	# MAILING
+	MailProg=/usr/bin/mail
+	#MailDomain=
+	\end{verbatim}
+
+  \item Propagate the updated \texttt{slurm.conf} file to the entire cluster, and reconfigure the slurm daemons for the changes to take effect.
+
+  \item Find a way to propagate messages to the users. In our case, we use \texttt{grab\_slurm\_mail.sh} (in the \href{https://github.com/coyleej/MiniClusterTools}{MiniClusterTools repo}) for this purpose. It is designed so that the user can delete either \texttt{Slurm\_mail.log} or its contents without harming operation of the script. 
+
+    \begin{enumerate}
+      \item Stores the location of the slurm mailing information, \texttt{/var/spool/mail/slurm}.
+
+      \item Creates a list of all human users.
+
+      \item Makes sure every human user's home directory contains a file call \texttt{Slurm\_mail.log}, owned by that user.
+
+      \item Retrieve the time and date while pretending to be the timezone immediately to the west of you. This allows you to grab all mail activity in the previous hour. The date must be formatted such that it matches the line in the mail message.
+
+        \texttt{hour=\$(TZ=CST6CDT date +"\%a, \%\_d \%b \%Y \%\_H")}
+
+      \item Use \texttt{grep}, \texttt{cut}, and \texttt{tr} to grab line numbers for all messages in the past hour. This will include messages from both Slurm and other sources.
+
+      \item If there are any matches within the past hour, set the line numbers matching the sending information, the recipient, and the subject relative to the line number you got with \texttt{grep}.
+
+      \item Use \texttt{sed} to retrieve the subject line of the message. If the subject line contains ``SLURM", extract the source and the recipient. Append the source, intended recipient, subject line, and a blank line to the recipient's copy of \texttt{Slurm\_mail.log}. 
+    \end{enumerate}
+
+  \item Copy \texttt{grab\_slurm\_mail.sh} onto both controllers.
+
+  \item On the controllers, open \texttt{root}'s \texttt{crontab} and set \texttt{grab\_slurm\_mail.sh} to run at the top of the hour.
+
+    \texttt{0 *  * * * bash /path/to/grab\_slurm\_mail.sh >/dev/null 2>\&1}
+
+  \item Transferring information from the controller's \texttt{Slurm\_mail.log} file to an Oryx Pro is the individual user's responsibility. Refer to section \ref{subsec:usingSlurmMail} for information on setting this up.
+\end{enumerate}
+
+\subsection{With a FQDN} \label{subsec:mail_FQDN}
+
+Setup is easier if you have a FQDN, then you \textbf{\emph{can}} send emails. The following setup works is a workaround to notify users of job completion without requiring a FQDN. 
+
+\begin{enumerate}
+  \item Add the following to \texttt{slurm.conf}, just above the ``Resources" section.
+
+	\begin{verbatim}
+	# MAILING
+	MailProg=/usr/bin/mail
+	MailDomain=<your.fqdn.here>
+	\end{verbatim}
+
+  \item Propagate the updated \texttt{slurm.conf} file to the entire cluster, and reconfigure the slurm daemons for the changes to take effect.
+
+  \item The user must enter their email when submitting the script if they want to be notified. Refer users to section \ref{subsec:usingSlurmMail}. 
+\end{enumerate}
 
 \section{Database setup} \label{sec:slurmDB}
 
-\begin{enumerate}
+SchedMD recommends a separate database server if possible. It may be on the same server as \texttt{slurmctld}, but this may impact performance. You should consider optimizing the database performance by mounting the MariaDB or MySQL database directory on a dedicated high-speed file system. Ideally this would be a PCIe SSD disk drive (e.g.\ Intel SSD P3700 series or Kingston E1000 series), but SSD SAS/SATA will also work. Drives must be qualified for high-volume random small read/write operations, and should be built with the Non-Volatile Memory Express (NVMe) storage interface standard for reliability and performance. A disk size of 200 GB or 400 GB should be sufficient. Consider installing 2 disk drives in a RAID-1 configuration.
 
+\begin{enumerate}
   \item If you followed the basic slurm install instructions in section \ref{sec:basicslurm}, you should have downloaded the MiniClusterTools git repo. If not, do it now.
 
     \texttt{git clone https://github.com/coyleej/MiniClusterTools.git}
@@ -791,7 +859,6 @@ You will need the \texttt{transfer\_slurm\_control.sh} file from the MiniCluster
         \texttt{Description="<description>" Organization=<organization>} \\
         Omitting \texttt{Cluster} will add the account to all clusters. \texttt{parent} is only required if the new account is a sub-account of another account.
 
-%		\input{./Chapters/ClusterAccts.tex}
 
       \item Add users: 
 
@@ -801,7 +868,6 @@ You will need the \texttt{transfer\_slurm\_control.sh} file from the MiniCluster
 
         \texttt{Account} can take a single account or a comma separated list. Not specifying \texttt{Account} will give the user access to all accounts on the cluster. \texttt{DefaultAccount} will set the default account for a user. At least one of the two options is required. \\
 
-%        \input{./Chapters/ClusterAcctUsers.tex}
 
       \item Commands to view accounting information:
 
@@ -833,6 +899,8 @@ You will need the \texttt{transfer\_slurm\_control.sh} file from the MiniCluster
 
   \item If you wish to customize \texttt{squeue} output, refer to section \ref{sec:customsqueue}
 \end{enumerate}
+
+
 
 %%
 %%\section{MariaDB setup on new database host} \label{sec:movemariadb}
@@ -891,16 +959,3 @@ You will need the \texttt{transfer\_slurm\_control.sh} file from the MiniCluster
 %%
 %%  \item Start \texttt{slurmdbd} and check it's status.
 %%\end{enumerate}
-
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%\
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%\
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%\
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%\
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%\
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%\
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%\
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%\
-
-
-
